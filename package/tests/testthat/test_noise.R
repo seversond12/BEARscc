@@ -1,3 +1,5 @@
-test_that("a test stub", {
+test_that("test stub", {
   expect_true(TRUE)
 })
+
+

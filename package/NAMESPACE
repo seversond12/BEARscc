@@ -1,5 +1,4 @@
 import("data.table")
 import("ggplot2")
 import("cowplot")
-import("DESeq2")
 exportPattern("^[[:alpha:]]+")

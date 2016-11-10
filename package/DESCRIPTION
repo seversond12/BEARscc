@@ -4,7 +4,7 @@ Title: What the Package Does (Title Case)
 Version: 0.1.0
 Author: David T. Severson <david.severson@ludwig.ox.ac.uk>
 Maintainer: Benjamin Schuster-Boeckler <benjamin.schuster-boeckler@ludwig.ox.ac.uk>
-Description: More about what it does (maybe more than one line)
+Description: BEARscc is a noise estimation and injection tool that is designed to assess putative single-cell RNA-seq clusters in the context of experimental noise estimated by ERCC spike-in controls.
 License: GPL-3
-Imports: ggplot2, data.table, cowplot, DESeq2
+Imports: ggplot2, data.table, cowplot
 Suggests: testthat

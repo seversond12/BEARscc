@@ -35,7 +35,7 @@ estimate_mu2sigma<-function(x, plot,sd_inflate, file="Rplot"){
 ##x is a dataframe with cells as columns and ERCC ids as rows, each element is an observed unnormalized count
 ##y is a dataframe with ERCC ids as rownames and the 1st column is the number of transcripts spiked into the sample
 ##granularity is the number of bins to divide the distributions into in order to determine maximal alpha
-compute_alpha<-function(x,estimate_mu2sigma,sd_inflate,plot,granularity, file){
+compute_alpha<-function(x,estimate_mu2sigma,sd_inflate,plot,granularity, file, alpha_granularity=alpha_granularity){
   mu2sigma<-estimate_mu2sigma(x, plot,sd_inflate, file=file)
   x1<-melt(data.table(x, keep.rownames = TRUE), id.vars = c("rn", "transcripts"))
  if (plot==TRUE){
@@ -53,7 +53,7 @@ compute_alpha<-function(x,estimate_mu2sigma,sd_inflate,plot,granularity, file){
   setkey(y, "rn")
   z2<-data.frame(as.character("DUMMY"), 1, 1, 1, 1)
   colnames(z2)<-c("rn","Mean", "p.nbinom","p.poisson","r.value")
-  for (j in seq(from=0, to=1, by=0.005)){
+  for (j in seq(from=0, to=1, by=alpha_granularity)){
     if (j %in% seq(from=0, to=1, by=0.05)){
       print(paste("Estimating error for ERCCs with alpha = ", j,sep=""))
     }
@@ -95,7 +95,6 @@ compute_alpha<-function(x,estimate_mu2sigma,sd_inflate,plot,granularity, file){
     y1<-y3
   }
   rvalues.dt<-data.table(y1[-1], key="rn")
-  print("Alpha with least error in fit has been computed for each measured ERCC.")
   rvalues.dt<-rvalues.dt[rvalues.dt$Mean>=1,]
   alpha2mean<-lm(rvalues.dt$p.nbinom~log2(rvalues.dt$Mean+0.025))
   if (plot==TRUE){
@@ -107,15 +106,12 @@ compute_alpha<-function(x,estimate_mu2sigma,sd_inflate,plot,granularity, file){
   }
   alpha2mu<-data.frame(alpha2mu.slope=coef(alpha2mean)[2], alpha2mu.intercept=coef(alpha2mean)[1], sd.inflate=sd_inflate)
   parameters<-data.frame(cbind(mu2sigma,alpha2mu), row.names=c("parameter.value"))
-  print("Model parameters have been estimated. They are: ")
-  print(parameters)
   parameters
 }
 
 ##function that computes the nulls using the estimated parameters from compute_alpha funciton
 ##takes prepared dataframe of ERCCs as imput and parameters from compute_alpha
 compute_models<-function(x, parameters){
-  print("We are now sampling from distributions to create vector for plotting")
   mu2sigma.slope<-parameters$mu2sigma.slope
   sd_inflate<-parameters$sd.inflate
   max.res<-parameters$max.res
@@ -194,14 +190,11 @@ compute_genewise_zeroinflation<-function(x){
 ## This is equivalent to sum,from k=1 to 34,{P(y=0|x=k)} * 1/34,
 ### x is the prepared dataframe of ERCC spikeins, y is the dataframe of raw counts of actual cellular expression
 estimate_missingdata<-function(x, y, counts2mpc.fit, plot, file, dropout_inflate=dropout_inflate){
-  print("Determing ERCCs with dropout observations in actual detection")
-  print(paste("with dropout inflation, ", dropout_inflate, ".", sep=""))
   bayes_list<-compute_genewise_zeroinflation(y)
   ERCC.dt<-data.table(x, keep.rownames = TRUE)
   ERCC.dt<-ERCC.dt[ERCC.dt[,rowSums(.SD==0)>1, .SD=c(2:dim(ERCC.dt)[2])],][transcripts>0,]
   undetected2mpc<-estimate_undetected2molpercell(ERCC.dt, plot=plot, file=file)
   kmax<-ceiling(2^(-as.numeric(undetected2mpc[2])/((1/as.numeric(dropout_inflate))*as.numeric(undetected2mpc[1]))))
-  print(kmax)
   k<-seq(from=0, to=kmax, by=1)
   y0.df<-data.frame(k=k)
   y0.df$Py0givenk<-(1/as.numeric(dropout_inflate))*as.numeric(undetected2mpc[1])*log2(y0.df$k)+as.numeric(undetected2mpc[2])
@@ -235,25 +228,25 @@ estimate_missingdata<-function(x, y, counts2mpc.fit, plot, file, dropout_inflate
 ################################## USER COMMANDS ############################################
 ##x is the dataframe of ERCCs, y is the data frame of ERCCs with actual molecules per cell in the second column, z is the counts matrix
 ##model_view should be a vector of c("Optimized", "Poisson", "Neg. Binomial", "Observed")
-estimate_noiseparameters<-function(x,y,z, plot=FALSE, sd_inflate=0, normseq=TRUE,granularity=300,write.noise.model=TRUE,file="noise_estimation",model_view=c("Observed","Optimized"),total_sampling=2500, dropout_inflate=1){
+estimate_noiseparameters<-function(x,y,z, plot=FALSE, sd_inflate=0,granularity=300,write.noise.model=TRUE,file="noise_estimation",model_view=c("Observed","Optimized"),total_sampling=2500, dropout_inflate=1, alpha_granularity=0.005){
   force(granularity)
   force(sd_inflate)
-  print("Preparing data for parameter estimation.")
+  force(alpha_granularity)
   ERCC.prepared.counts<-prepare_data(x, y)
   actual.prepared.counts<-z
-  print("Fitting the linear model as a function of gene expression from ERCCs.")
-  parameters<-compute_alpha(ERCC.prepared.counts,estimate_mu2sigma, granularity=granularity, sd_inflate=sd_inflate, plot=plot, file=file)
+  print("Fitting parameter alpha to establish ERCC-derived noise model.")
+  parameters<-compute_alpha(ERCC.prepared.counts,estimate_mu2sigma, granularity=granularity, sd_inflate=sd_inflate, plot=plot, file=file, alpha_granularity=alpha_granularity)
+  ERCC.m.counts<-melt(data.table(ERCC.prepared.counts, keep.rownames = TRUE), id.vars = c("rn", "transcripts"))
+  ERCC.m.valid<-ERCC.m.counts[,mean(value)>0, by="rn"]
+  setkey(ERCC.m.valid, "rn")
+  setkey(ERCC.m.counts,"rn")
+  ERCC.m.counts<-ERCC.m.valid[ERCC.m.counts,][V1==TRUE,][,-2,with=FALSE]
+  models.dt<-compute_models(ERCC.m.counts, parameters)
+  models.dt$distribution<-gsub(TRUE,"Observed",models.dt$variable != "Mixed" & models.dt$variable != "NBinom" & models.dt$variable !="Poisson")
+  models.dt[models.dt$variable=="Mixed",]$distribution<-"Optimized"
+  models.dt[models.dt$variable=="Poisson"]$distribution<-"Poisson"
+  models.dt[models.dt$variable=="NBinom"]$distribution<-"Neg. Binomial"
   if (plot==TRUE){
-    ERCC.m.counts<-melt(data.table(ERCC.prepared.counts, keep.rownames = TRUE), id.vars = c("rn", "transcripts"))
-    ERCC.m.valid<-ERCC.m.counts[,mean(value)>0, by="rn"]
-    setkey(ERCC.m.valid, "rn")
-    setkey(ERCC.m.counts,"rn")
-    ERCC.m.counts<-ERCC.m.valid[ERCC.m.counts,][V1==TRUE,][,-2,with=FALSE]
-    models.dt<-compute_models(ERCC.m.counts, parameters)
-    models.dt$distribution<-gsub(TRUE,"Observed",models.dt$variable != "Mixed" & models.dt$variable != "NBinom" & models.dt$variable !="Poisson")
-    models.dt[models.dt$variable=="Mixed",]$distribution<-"Optimized"
-    models.dt[models.dt$variable=="Poisson"]$distribution<-"Poisson"
-    models.dt[models.dt$variable=="NBinom"]$distribution<-"Neg. Binomial"
     ERCCnames<-as.character(unique(models.dt[order(transcripts)]$rn))
     round(length(ERCCnames)/6)
     dir.create("ERCCfit_plots")
@@ -266,19 +259,20 @@ estimate_noiseparameters<-function(x,y,z, plot=FALSE, sd_inflate=0, normseq=TRUE
       ggsave(savefile, plot=g, device="pdf", width=10.5, height=7.5, units = "in")
     }
   }
-  print("Calculating the fit between actual transcripts and the counts observed.")
   counts2mpc.fit<-counts2mpc(ERCC.prepared.counts, plot=plot, file=file)
   bayes_dropouts<-estimate_missingdata(ERCC.prepared.counts, actual.prepared.counts, counts2mpc.fit ,plot=plot, file=file, dropout_inflate=dropout_inflate)
   bayes_dropouts$ERCC_parameters<-parameters
   noise_model<-bayes_dropouts
   noise_model$models.dt<-models.dt
+  noise_model$original.counts<-z
+  noise_model$ERCC.concentrations<-x
+  noise_model$ERCC.counts<-y
   if (write.noise.model==TRUE) {
     write.table(data.table(noise_model$ERCC_parameters, keep.rownames = TRUE),file=paste(file, "parameters4randomize.xls", sep="_"), quote=FALSE, sep="\t", row.names = FALSE)
     write.table(noise_model$bayes_parameters,file=paste(file, "bayesianestimates.xls", sep="_"), quote=FALSE, sep="\t", row.names=FALSE )
     print("Parameters have been saved into the current directory in bayesianestimates.xls and parameters4randomize.xls.")
     noise_model
   } else {
-    "Estimations are being printed"
     noise_model
   }
 }

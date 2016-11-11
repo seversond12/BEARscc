@@ -19,7 +19,7 @@ randomizer<-function(x,parameters,total_sampling){
 }
 
 ##The count permuter that decides fate of observations of 0 and also calls the randomizer function.
-permute_count<-function(x, probs4detection.k, probabilityA, parameters, gene, randomizer, total_sampling){
+permute_count<-function(x, probs4detection.k, probabilityA, parameters, total_sampling){
   force(parameters)
   if (x==0) {
     nx<-sample(as.numeric(rownames(probs4detection.k)),1,prob=probabilityA, replace=TRUE)
@@ -44,18 +44,24 @@ permute_count<-function(x, probs4detection.k, probabilityA, parameters, gene, ra
 }
 
 ##seperates out genes for analysis
-genewise_permute_count<-function(x,probs4detection.k, probs4detection.genes,parameters,randomizer,total_sampling=2500){
+genewise_permute_count<-function(x, probs4detection.k, probs4detection.genes, parameters, total_sampling){
   probabilityA<-probs4detection.genes[gsub("-",".",x[1]),]
   force(total_sampling)
-  apply(data.frame(as.numeric(x[-1])),1, `permute_count`, probs4detection.k,probabilityA, parameters,gene=gene_name,randomizer,total_sampling)
+  apply(data.frame(as.numeric(x[-1])),1, `permute_count`, probs4detection.k, probabilityA=probabilityA, parameters, total_sampling)
 }
 
 
 ############# USER FUNCTION ###################################
 ##executes noise perturbation with estimated parameters
-create_noiseinjected_counts<-function(x,probs4detection, parameters,genewise_permute_count=genewise_permute_count,permute_count=permute_count, randomizer=randomizer,total_sampling=2500){
-  probs4detection.genes<-t(data.frame(probs4detection, row.names = "k")[,4:eval(dim(probs4detection)[2]-1)])
-  probs4detection.k<-data.frame(probs4detection[,2:4, with=FALSE],row.names = "k")
-  noisy_counts<-data.table(x, keep.rownames = TRUE)[,apply(.SD,1 ,`genewise_permute_count`,probs4detection.k=probs4detection.k,probs4detection.genes=probs4detection.genes,total_sampling, randomizer=randomizer, parameters=parameters)]
-  noisy_counts
+create_noiseinjected_counts<-function(noise_parameters,total_sampling=2500){
+  force(total_sampling)
+  probs4detection.genes<-t(data.frame(noise_parameters$bayes_parameters, row.names = "k")[,4:eval(dim(noise_parameters$bayes_parameters)[2]-1)])
+  probs4detection.k<-data.frame(noise_parameters$bayes_parameters[,2:4, with=FALSE],row.names = "k")
+  noisy_counts<-data.table(noise_parameters$original.counts, keep.rownames = TRUE)[,apply(.SD,1 ,`genewise_permute_count`, probs4detection.k=probs4detection.k, probs4detection.genes=probs4detection.genes, parameters=noise_parameters$ERCC_parameters, total_sampling=total_sampling)]
+  noisy_counts<-t(noisy_counts)
+  rownames(noisy_counts)<-rownames(noise_parameters$original.counts)
+  colnames(noisy_counts)<-colnames(noise_parameters$original.counts)
+  noisy_counts.dt<-data.table(noisy_counts, keep.rownames = TRUE)
+  colnames(noisy_counts.dt)[1]<-"GENE_ID"
 }
+

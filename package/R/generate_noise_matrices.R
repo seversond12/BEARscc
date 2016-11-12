@@ -50,11 +50,9 @@ genewise_permute_count<-function(x, probs4detection.k, probs4detection.genes, pa
   apply(data.frame(as.numeric(x[-1])),1, `permute_count`, probs4detection.k, probabilityA=probabilityA, parameters, total_sampling)
 }
 
-
-############# USER FUNCTION ###################################
-##executes noise perturbation with estimated parameters
-create_noiseinjected_counts<-function(noise_parameters,total_sampling=2500){
+execute_noiseinjected_counts<-function(n, noise_parameters,total_sampling){
   force(total_sampling)
+  print(paste("Creating a noise-injected counts matrix: ", n,".", sep=""))
   probs4detection.genes<-t(data.frame(noise_parameters$bayes_parameters, row.names = "k")[,4:eval(dim(noise_parameters$bayes_parameters)[2]-1)])
   probs4detection.k<-data.frame(noise_parameters$bayes_parameters[,2:4, with=FALSE],row.names = "k")
   noisy_counts<-data.table(noise_parameters$original.counts, keep.rownames = TRUE)[,apply(.SD,1 ,`genewise_permute_count`, probs4detection.k=probs4detection.k, probs4detection.genes=probs4detection.genes, parameters=noise_parameters$ERCC_parameters, total_sampling=total_sampling)]
@@ -63,5 +61,17 @@ create_noiseinjected_counts<-function(noise_parameters,total_sampling=2500){
   colnames(noisy_counts)<-colnames(noise_parameters$original.counts)
   noisy_counts.dt<-data.table(noisy_counts, keep.rownames = TRUE)
   colnames(noisy_counts.dt)[1]<-"GENE_ID"
+  noisy_counts.dt
 }
 
+############# USER FUNCTION ###################################
+##executes noise perturbation with estimated parameters
+create_noiseinjected_counts<-function(noise_parameters,total_sampling=2500, n=3){
+  force(total_sampling)
+  vector<-as.character(seq(from=1, to=n, by=1))
+  vector.names<-gsub("^","Iteration ",vector)
+  vector<-data.table(t(vector))
+  colnames(vector)<-vector.names
+  noisy_counts.list<-lapply(vector, `execute_noiseinjected_counts`, noise_parameters=noise_parameters, total_sampling=total_sampling)
+  noisy_counts.list
+}

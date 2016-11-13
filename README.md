@@ -38,11 +38,11 @@ Estimate noise inputting ERCC known concentrations, and both endogenous and spik
 
 Several options exist:
 
-`granularity` determines the number of bins for comparison of the quality of fit between the mixed-model and observed data for each alpha. This should be set lower for small datasets and higher for datasets with more observations<br>
+`granularity` determines the number of bins for comparison of the quality of fit between the mixed-model and observed data for each alpha. This should be set lower for small datasets and higher for datasets with more observations
 
-`write.noise.model=TRUE` outputs two tab-delimited files containing the dropout effects and noise model parameters; this allows users to apply the noise generation on a seperate high compute node. <br>
+`write.noise.model=TRUE` outputs two tab-delimited files containing the dropout effects and noise model parameters; this allows users to apply the noise generation on a seperate high compute node. 
 
-`plot==TRUE` will plot all linear fits and individual ERCCs distributions across samples, where `model_view=c("Observed", "Optimized", "Poisson", "Neg. Binomial"` determines the statistical distributions that should be plotted for the ERCC plots. `file="./Rplot"` determines the root name for all plots, which write to the current working directory unless a path is contained in the root name.  <br>
+`plot==TRUE` will plot all linear fits and individual ERCCs distributions across samples, where `model_view=c("Observed", "Optimized", "Poisson", "Neg. Binomial"` determines the statistical distributions that should be plotted for the ERCC plots. `file="./Rplot"` determines the root name for all plots, which write to the current working directory unless a path is contained in the root name. 
 
 
 Following estimation of noise the parameters are used to generate a noise-injected counts matrix. 
@@ -53,25 +53,26 @@ Following estimation of noise the parameters are used to generate a noise-inject
 
 After generating noise-injected counts tables, these should be re-clustered using the clustering method applied to the original dataset. For simplicity, here we use hierarchical clustering on a euclidean distance metric to identify two clusters. In our experience, some published clustering algorithms are sensitive to cell order, so we suggest scrambling the order of cells for each noise iteration we do below.  
 
-To quickly recluster a list, we define a reclustering function: <br>
-`recluster<-function(x){`<br>
-&nbsp;&nbsp;&nbsp;&nbsp;`x<-data.frame(x, row.names = "GENE_ID")`<br>
-&nbsp;&nbsp;&nbsp;&nbsp;`scramble<-sample(colnames(x), size=length(colnames(x)), replace=FALSE)` <br>
-&nbsp;&nbsp;&nbsp;&nbsp;`x<-x[,scramble]`<br>
-&nbsp;&nbsp;&nbsp; `clust<-hclust(dist(t(x),method="euclidean"),method="complete")`<br>
-&nbsp;&nbsp;&nbsp;&nbsp;`clust<-cutree(clust,2)`<br>
-&nbsp;&nbsp;&nbsp;&nbsp;`data.frame(clust)`<br>
-`}` <br>
+To quickly recluster a list, we define a reclustering function:
+
+`recluster<-function(x){`
+  `x<-data.frame(x, row.names = "GENE_ID")`
+  `scramble<-sample(colnames(x), size=length(colnames(x)), replace=FALSE)`
+  `x<-x[,scramble]`
+  `clust<-hclust(dist(t(x),method="euclidean"),method="complete")`
+  `clust<-cutree(clust,2)`
+  `data.frame(clust)`
+`}` 
 
 We then recluster and manipulate the list into a `data.frame`. 
 
 ``clusters.list<-lapply(noisy_counts.list, `recluster`)``
-`clusters.df<-do.call("cbind", cluster.list)` <br>
+`clusters.df<-do.call("cbind", cluster.list)` 
 `colnames(clusters.df)<-names(cluster.list)`
 
 If running clustering algorithms on a seperate high power cluster, then retrieve labels and format as a data.frame of cluster labels, where the last column must be the original cluster labels derived from the observed count data. As an example, examine the file, `example/example_clusters.tsv`.
 
-With a cluster labels file as described above, we can generate a noise consensus matrix using: <br>
+With a cluster labels file as described above, we can generate a noise consensus matrix using: 
 
 `noise_consensus<-compute_consensus(clusters.df)`
 
@@ -79,10 +80,10 @@ For illustrative purpose, an image of the noise consensus matrix result of 30 it
 
 In order to help interpret the noise consensus we have defined three cluster (and analagous cell) metrics. Stabilty indicates the propensity for a putative cluster to remain constant across noise-injected counts matrices. Promiscuity indicates a tendency for a putative cluster to associate with other clusters across noise-injected counts matrices. Score represents the promiscuity substracted from the stability. We have found it useful to identify the optimal number of clusters in terms of resiliance to noise by examining these metrics for the original clustering and by cutting hierarchical tress of the noise consensus. To do this create a vector of the number of cluster one wishes to examine (the funciton automatically determines the results for one cluster) and cluster the consensus:
 
-`vector<-seq(from=2, to=5, by=1)` <br>
-`BEARscc_clusts.df<-cluster_consensus(noise_consensus,vector)` <br>
+`vector<-seq(from=2, to=5, by=1)` 
+`BEARscc_clusts.df<-cluster_consensus(noise_consensus,vector)` 
 
-And add the original clustering to the `data.frame`: `BEARscc_clusts.df<-cbind(BEARscc_clusts.df, Original=clusters.df$Original_counts)` <br>
+And add the original clustering to the `data.frame`: `BEARscc_clusts.df<-cbind(BEARscc_clusts.df, Original=clusters.df$Original_counts)` 
 
 Compute cluster metrics by running the command: `cluster_scores.dt<-report_cluster_metrics(BEARscc_clusts.df,noise_consensus, plot=TRUE, file="example")`
 

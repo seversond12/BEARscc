@@ -18,10 +18,10 @@ Single-cell transcriptome sequencing data are subject to substantial technical v
 
 #Installation
 
-Installing BEARscc is easy. You can download a binary package [here](https://bitbucket.org/bsblabludwig/bearscc/raw/a2f66c1b463d1e0db767d5a539a11f54462cd2b8/builds/BEARscc_0.1.0.tgz). You can then use `install.packages` as normal, but give it the location of the downloaded file:
+Installing BEARscc is easy. You can download a binary package [here](https://bitbucket.org/bsblabludwig/bearscc/raw/6650702c9fbd0ef95c088df9279da78524f57d0a/builds/BEARscc_0.1.1.tgz). You can then use `install.packages` as normal, but give it the location of the downloaded file:
 
 ```R
- install.packages('BEARscc_0.1.0.tgz')
+ install.packages('BEARscc_0.1.1.tgz')
 ```
 
 #Usage

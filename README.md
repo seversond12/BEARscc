@@ -56,19 +56,19 @@ After generating noise-injected counts tables, these should be re-clustered usin
 To quickly recluster a list, we define a reclustering function:
 
 ```recluster<-function(x){
-  x<-data.frame(x, row.names = "GENE_ID")
-  scramble<-sample(colnames(x), size=length(colnames(x)), replace=FALSE)
-  x<-x[,scramble]
-  clust<-hclust(dist(t(x),method="euclidean"),method="complete")
-  clust<-cutree(clust,2)
-  data.frame(clust)
+  x<-data.frame(x, row.names = "GENE_ID");
+  scramble<-sample(colnames(x), size=length(colnames(x)), replace=FALSE);
+  x<-x[,scramble];
+  clust<-hclust(dist(t(x),method="euclidean"),method="complete");
+  clust<-cutree(clust,2);
+  data.frame(clust);
 }``` 
 
 We then recluster and manipulate the list into a `data.frame`. 
 
-```clusters.list<-lapply(noisy_counts.list, `recluster`)
-clusters.df<-do.call("cbind", cluster.list)
-colnames(clusters.df)<-names(cluster.list)```
+`clusters.list<-lapply(noisy_counts.list, `recluster`)`
+`clusters.df<-do.call("cbind", cluster.list)`
+`colnames(clusters.df)<-names(cluster.list)`
 
 If running clustering algorithms on a seperate high power cluster, then retrieve labels and format as a data.frame of cluster labels, where the last column must be the original cluster labels derived from the observed count data. As an example, examine the file, `example/example_clusters.tsv`.
 

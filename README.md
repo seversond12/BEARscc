@@ -97,7 +97,7 @@ We then apply the function `recluster()` to all noise-injected counts matrices a
 `clusters.df<-do.call("cbind", cluster.list)`
 `colnames(clusters.df)<-names(cluster.list)`
 
-If running clustering algorithms on a seperate high power cluster, the user should retrieve labels and format as a `data.frame` of cluster labels, where the last column must be the original cluster labels derived from the observed count data. As an example, examine the file, [`example/example_clusters.tsv`](example/example_clusters.tsv).
+If running clustering algorithms on a seperate high power cluster, the user should retrieve labels and format as a `data.frame` of cluster labels, where the last column must be the original cluster labels derived from the observed count data. As an example, examine the file, [example/example_clusters.tsv](example/example_clusters.tsv).
 
 Using the cluster labels file as described above, we can generate a noise consensus matrix using: 
 
@@ -122,7 +122,7 @@ Compute cluster metrics by running the command: `cluster_scores.dt<-report_clust
 
 The output is a melted `data.table` that displays the name of each cluster, the size of each cluster, the metric (score, Promiscuity, Stability), the value of each metric for the respective cluster and clustering, the clustering in question (1,2,...,Original), whether the cluster consists of only one cell, and finally the mean of each metric across all clusters in a clustering.  
 
-An example of the resulting plot for 3 noise-injected perturbations is provided for the user's reference: [`example/example_cluster_scores.pdf`](example/example_cluster_scores.pdf). It is evident from the plot that one cluster is optimal and outperforms the original clustering which bifurcated this set of purely technical data into 2 clusters.
+An example of the resulting plot for 3 noise-injected perturbations is provided for the user's reference: [example/example_cluster_scores.pdf](example/example_cluster_scores.pdf). It is evident from the plot that one cluster is optimal and outperforms the original clustering which bifurcated this set of purely technical data into 2 clusters.
 
 Likewise, the cell metrics may be computed using:
 `cell_scores.dt<-report_cell_metrics(BEARscc_clusts.df, noise_consensus)`

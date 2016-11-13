@@ -93,15 +93,19 @@ recluster <- function(x) {
 
 We then apply the function `recluster()` to all noise-injected counts matrices and the original counts matrix and manipulate the list into a `data.frame`. 
 
-``clusters.list<-lapply(noisy_counts.list, `recluster`)``
-`clusters.df<-do.call("cbind", cluster.list)`
-`colnames(clusters.df)<-names(cluster.list)`
+```R
+clusters.list<-lapply(noisy_counts.list, `recluster`)
+clusters.df<-do.call("cbind", cluster.list)
+colnames(clusters.df)<-names(cluster.list)
+```
 
 If running clustering algorithms on a seperate high power cluster, the user should retrieve labels and format as a `data.frame` of cluster labels, where the last column must be the original cluster labels derived from the observed count data. As an example, examine the file, [example/example_clusters.tsv](example/example_clusters.tsv).
 
 Using the cluster labels file as described above, we can generate a noise consensus matrix using: 
 
-`noise_consensus<-compute_consensus(clusters.df)`
+```R
+noise_consensus <- compute_consensus(clusters.df)
+```
 
 The consensus matrix result of 30 iterations of BEARscc on the provided example data will look like this:
 
@@ -116,16 +120,27 @@ vector <- seq(from=2, to=5, by=1)
 BEARscc_clusts.df <- cluster_consensus(noise_consensus,vector)
 ```
 
-We add the original clustering to the `data.frame`: `BEARscc_clusts.df<-cbind(BEARscc_clusts.df, Original=clusters.df$Original_counts)` 
+We add the original clustering to the `data.frame`:
 
-Compute cluster metrics by running the command: `cluster_scores.dt<-report_cluster_metrics(BEARscc_clusts.df,noise_consensus, plot=TRUE, file="example")`
+```R
+BEARscc_clusts.df <- cbind(BEARscc_clusts.df, Original=clusters.df$Original_counts)
+```
+
+Compute cluster metrics by running the command:
+
+```R
+cluster_scores.dt <- report_cluster_metrics(BEARscc_clusts.df,noise_consensus, plot=TRUE, file="example")
+```
 
 The output is a melted `data.table` that displays the name of each cluster, the size of each cluster, the metric (score, Promiscuity, Stability), the value of each metric for the respective cluster and clustering, the clustering in question (1,2,...,Original), whether the cluster consists of only one cell, and finally the mean of each metric across all clusters in a clustering.  
 
 An example of the resulting plot for 3 noise-injected perturbations is provided for the user's reference: [example/example_cluster_scores.pdf](example/example_cluster_scores.pdf). It is evident from the plot that one cluster is optimal and outperforms the original clustering which bifurcated this set of purely technical data into 2 clusters.
 
 Likewise, the cell metrics may be computed using:
-`cell_scores.dt<-report_cell_metrics(BEARscc_clusts.df, noise_consensus)`
+
+```R
+cell_scores.dt <- report_cell_metrics(BEARscc_clusts.df, noise_consensus)
+```
 
 The output is a melted `data.table` that displays the name of each cluster to which the cell belongs, the cell label, the size of each cluster, the metric (score, Promiscuity, Stability), the value for each metric, and finally the clustering in question (1,2,...,Original).
 

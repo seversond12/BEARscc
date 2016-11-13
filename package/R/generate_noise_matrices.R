@@ -69,9 +69,11 @@ execute_noiseinjected_counts<-function(n, noise_parameters,total_sampling){
 create_noiseinjected_counts<-function(noise_parameters,total_sampling=2500, n=3){
   force(total_sampling)
   vector<-as.character(seq(from=1, to=n, by=1))
-  vector.names<-gsub("^","Iteration ",vector)
+  vector.names<-gsub("^","Iteration_",vector)
   vector<-data.table(t(vector))
   colnames(vector)<-vector.names
   noisy_counts.list<-lapply(vector, `execute_noiseinjected_counts`, noise_parameters=noise_parameters, total_sampling=total_sampling)
+  noisy_counts.list$Original_counts<-data.table(noise_parameters$original.counts, keep.rownames = TRUE)
+  colnames(noisy_counts.list$Original_counts)[1]<-"GENE_ID"
   noisy_counts.list
 }

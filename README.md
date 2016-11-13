@@ -22,8 +22,7 @@ Installing BEARscc is easy. You can download a binary package [here](https://bit
 
 ```R
  install.packages('BEARscc_0.1.0.tgz')
- ```
- 
+```
 
 #Usage
 

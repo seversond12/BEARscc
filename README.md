@@ -1,14 +1,14 @@
 BEARscc - Bayesian ERCC Assessment of Robustness  
 ================================================
 
-- [Summary](#Summary)
-- [Installation](#Installation)
-- [Basic usage](#Usage)
-- [Options](#Options)
-- [More details](#Details)
-- [License](#License)
+- [Summary](#markdown-header-summary)
+- [Installation](#markdown-header-installation)
+- [Basic usage](#markdown-header-usage)
+- [Options](#markdown-header-options)
+- [More details](#markdown-header-details)
+- [License](#markdown-header-license)
 
-# Summary
+#Summary
 
 Single-cell transcriptome sequencing data are subject to substantial technical variation and batch effects that can confound the classification of cellular sub-types. Unfortunately, current clustering algorithms don't account for this uncertainty. To address this shortcoming, we have developed a noise perturbation algorithm called **BEARscc** that is designed to determine the extent to which classifications by existing clustering algorithms are robust to observed technical variation.
 
@@ -16,7 +16,7 @@ Single-cell transcriptome sequencing data are subject to substantial technical v
 
 ![BEARscc consensus cluster](example/example_30iterations_consensus_matrix_heatmap.png)
 
-# Installation
+#Installation
 
 Installing BEARscc is easy. You can download a binary package [here](https://bitbucket.org/bsblabludwig/bearscc/raw/a2f66c1b463d1e0db767d5a539a11f54462cd2b8/builds/BEARscc_0.1.0.tgz). You can then use `install.packages` as normal, but give it the location of the downloaded file:
 
@@ -25,7 +25,7 @@ Installing BEARscc is easy. You can download a binary package [here](https://bit
  ```
  
 
-# Usage
+#Usage
 
 Here we provide a limited illustrative example of BEARscc on example data. A comprehensive vignette is being drafted and will be available in the near future. We are using the excellent [`data.table`](https://cran.r-project.org/web/packages/data.table/index.html) library here, which can be easily installed by typing `install.packages('data.table')`.
 
@@ -91,7 +91,7 @@ We then apply the function `recluster()` to all noise-injected counts matrices a
 `clusters.df<-do.call("cbind", cluster.list)`
 `colnames(clusters.df)<-names(cluster.list)`
 
-If running clustering algorithms on a seperate high power cluster, the user should retrieve labels and format as a `data.frame` of cluster labels, where the last column must be the original cluster labels derived from the observed count data. As an example, examine the file, [`example/example_clusters.tsv`](example/example_clusters.tsv).
+If running clustering algorithms on a seperate high power cluster, the user should retrieve labels and format as a `data.frame` of cluster labels, where the last column must be the original cluster labels derived from the observed count data. As an example, examine the file, [`example/example_clusters.tsv`](src/master/example/example_clusters.tsv).
 
 Using the cluster labels file as described above, we can generate a noise consensus matrix using: 
 

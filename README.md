@@ -23,14 +23,14 @@ Here we provide a limited illustrative example of BEARscc on example data. A com
 
 In R, load a single cell data table and ERCC known concentrations:
 
-`data.counts.dt<- fread("example/brain_control_example.tsv")` <br>
+`data.counts.dt<- fread("example/brain_control_example.tsv")`
 `ERCC.meta.dt<- fread("example/ERCC.meta.tsv")`
 
 Seperate ERCC observations into a `data.frame` and transfrom counts and ERCC known concentration `data.table` into `data.frame`.
 
-`ERCC.counts.df<-data.frame(data.counts.dt[GENE_ID%like%"ERCC-",], row.names="GENE_ID")` <br>
-`data.counts.df<-data.frame(data.dt, row.names = "GENE_ID")` <br>
-`ÈRCC.meta.df<-data.frame(ERCC.meta.dt, row.names="ERCC_ID")` <br>
+`ERCC.counts.df<-data.frame(data.counts.dt[GENE_ID%like%"ERCC-",], row.names="GENE_ID")` 
+`data.counts.df<-data.frame(data.dt, row.names = "GENE_ID")` 
+`ÈRCC.meta.df<-data.frame(ERCC.meta.dt, row.names="ERCC_ID")` 
 
 Estimate noise inputting ERCC known concentrations, and both endogenous and spike-in counts matrices into `estimate_noiseparameters()` function.
 
@@ -55,20 +55,20 @@ After generating noise-injected counts tables, these should be re-clustered usin
 
 To quickly recluster a list, we define a reclustering function:
 
-`recluster<-function(x){`
-  `x<-data.frame(x, row.names = "GENE_ID")`
-  `scramble<-sample(colnames(x), size=length(colnames(x)), replace=FALSE)`
-  `x<-x[,scramble]`
-  `clust<-hclust(dist(t(x),method="euclidean"),method="complete")`
-  `clust<-cutree(clust,2)`
-  `data.frame(clust)`
-`}` 
+```recluster<-function(x){
+  x<-data.frame(x, row.names = "GENE_ID")
+  scramble<-sample(colnames(x), size=length(colnames(x)), replace=FALSE)
+  x<-x[,scramble]
+  clust<-hclust(dist(t(x),method="euclidean"),method="complete")
+  clust<-cutree(clust,2)
+  data.frame(clust)
+}``` 
 
 We then recluster and manipulate the list into a `data.frame`. 
 
-``clusters.list<-lapply(noisy_counts.list, `recluster`)``
-`clusters.df<-do.call("cbind", cluster.list)` 
-`colnames(clusters.df)<-names(cluster.list)`
+```clusters.list<-lapply(noisy_counts.list, `recluster`)
+clusters.df<-do.call("cbind", cluster.list)
+colnames(clusters.df)<-names(cluster.list)```
 
 If running clustering algorithms on a seperate high power cluster, then retrieve labels and format as a data.frame of cluster labels, where the last column must be the original cluster labels derived from the observed count data. As an example, examine the file, `example/example_clusters.tsv`.
 

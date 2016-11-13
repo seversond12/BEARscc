@@ -107,9 +107,15 @@ Using the cluster labels file as described above, we can generate a noise consen
 noise_consensus <- compute_consensus(clusters.df)
 ```
 
-The consensus matrix result of 30 iterations of BEARscc on the provided example data will look like this:
+Using the `aheatmap()` function in the `NMF` library, the consensus matrix result of 30 iterations of BEARscc on the provided example data will look this:
 
 ![BEARscc consensus cluster](example/example_30iterations_consensus_matrix_heatmap.png)
+
+To reproduce the plot run:
+```R
+library("NMF")
+aheatmap(noise_consensus, breaks=0.5)
+```
 
 In order to interpret the noise consensus, we have defined three cluster (and analagous cell) metrics. Stabilty indicates the propensity for a putative cluster to contain the same cells across noise-injected counts matrices. Promiscuity indicates a tendency for cells in a putative cluster to associate with other clusters across noise-injected counts matrices. Score represents the promiscuity substracted from the stability. 
 

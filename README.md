@@ -66,7 +66,7 @@ To quickly recluster a list, we define a reclustering function:
 
 We then recluster and manipulate the list into a `data.frame`. 
 
-`clusters.list<-lapply(noisy_counts.list, `recluster`)`
+``clusters.list<-lapply(noisy_counts.list, `recluster`)``
 `clusters.df<-do.call("cbind", cluster.list)`
 `colnames(clusters.df)<-names(cluster.list)`
 

@@ -94,7 +94,7 @@ recluster <- function(x) {
 We then apply the function `recluster()` to all noise-injected counts matrices and the original counts matrix and manipulate the list into a `data.frame`. 
 
 ```R
-clusters.list<-lapply(noisy_counts.list, `recluster`)
+cluster.list<-lapply(noisy_counts.list, `recluster`)
 clusters.df<-do.call("cbind", cluster.list)
 colnames(clusters.df)<-names(cluster.list)
 ```

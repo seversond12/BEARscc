@@ -36,12 +36,12 @@ data.counts.dt <- fread("example/brain_control_example.tsv")
 ERCC.meta.dt <- fread("example/ERCC.meta.tsv")
 ```
 
-Seperate ERCC observations into a `data.frame` and transfrom counts and ERCC known concentration `data.table` into `data.frame`.
+Separate ERCC observations into a `data.frame` and transfrom counts and ERCC known concentration `data.table` into `data.frame`.
 
 ```R
 ERCC.counts.df <- data.frame(data.counts.dt[GENE_ID%like%"ERCC-",], row.names="GENE_ID")
-data.counts.df <- data.frame(data.dt, row.names = "GENE_ID")
-ÈRCC.meta.df <- data.frame(ERCC.meta.dt, row.names="ERCC_ID")
+data.counts.df <- data.frame(data.counts.dt, row.names = "GENE_ID")
+ERCC.meta.df <- data.frame(ERCC.meta.dt, row.names="ERCC_ID")
 ```
 
 Estimate noise inputting ERCC known concentrations, and both endogenous and spike-in counts matrices into the `estimate_noiseparameters()` function.

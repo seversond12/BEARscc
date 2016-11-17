@@ -14,7 +14,7 @@ Single-cell transcriptome sequencing data are subject to substantial technical v
 
 **BEARscc** makes use of ERCC spike-in measurements to model technical variance as a function of gene expression and technical dropout effects on lowly expressed genes. In our benchmarks, we found that BEARscc accurately models read count fluctuations and drop-out effects across transcripts with diverse expression levels. Applying our approach to publicly available single-cell transcriptome data of mouse brain and intestine, we have demonstrated that BEARscc identified cells that cluster consistently, irrespective of technical variation:
 
-![BEARscc consensus cluster](example/example_30iterations_consensus_matrix_heatmap.png)
+![BEARscc consensus cluster](example/figure3.png)
 
 #Installation
 

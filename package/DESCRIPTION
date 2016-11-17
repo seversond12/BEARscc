@@ -6,5 +6,5 @@ Author: David T. Severson <david.severson@ludwig.ox.ac.uk>
 Maintainer: Benjamin Schuster-Boeckler <benjamin.schuster-boeckler@ludwig.ox.ac.uk>
 Description: BEARscc is a noise estimation and injection tool that is designed to assess putative single-cell RNA-seq clusters in the context of experimental noise estimated by ERCC spike-in controls.
 License: GPL-3
-Imports: ggplot2, data.table, cowplot
-Suggests: testthat
+Imports: ggplot2, data.table
+Suggests: testthat, cowplot

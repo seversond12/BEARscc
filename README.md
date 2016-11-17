@@ -36,12 +36,12 @@ data.counts.dt <- fread("example/brain_control_example.tsv")
 ERCC.meta.dt <- fread("example/ERCC.meta.tsv")
 ```
 
-Seperate ERCC observations into a `data.frame` and transfrom counts and ERCC known concentration `data.table` into `data.frame`.
+Separate ERCC observations into a `data.frame` and transfrom counts and ERCC known concentration `data.table` into `data.frame`.
 
 ```R
 ERCC.counts.df <- data.frame(data.counts.dt[GENE_ID%like%"ERCC-",], row.names="GENE_ID")
-data.counts.df <- data.frame(data.dt, row.names = "GENE_ID")
-ÈRCC.meta.df <- data.frame(ERCC.meta.dt, row.names="ERCC_ID")
+data.counts.df <- data.frame(data.counts.dt, row.names = "GENE_ID")
+ERCC.meta.df <- data.frame(ERCC.meta.dt, row.names="ERCC_ID")
 ```
 
 Estimate noise inputting ERCC known concentrations, and both endogenous and spike-in counts matrices into the `estimate_noiseparameters()` function.
@@ -94,7 +94,7 @@ recluster <- function(x) {
 We then apply the function `recluster()` to all noise-injected counts matrices and the original counts matrix and manipulate the list into a `data.frame`. 
 
 ```R
-clusters.list<-lapply(noisy_counts.list, `recluster`)
+cluster.list<-lapply(noisy_counts.list, `recluster`)
 clusters.df<-do.call("cbind", cluster.list)
 colnames(clusters.df)<-names(cluster.list)
 ```
@@ -107,9 +107,15 @@ Using the cluster labels file as described above, we can generate a noise consen
 noise_consensus <- compute_consensus(clusters.df)
 ```
 
-The consensus matrix result of 30 iterations of BEARscc on the provided example data will look like this:
+Using the `aheatmap()` function in the `NMF` library, the consensus matrix result of 30 iterations of BEARscc on the provided example data will look this:
 
 ![BEARscc consensus cluster](example/example_30iterations_consensus_matrix_heatmap.png)
+
+To reproduce the plot run:
+```R
+library("NMF")
+aheatmap(noise_consensus, breaks=0.5)
+```
 
 In order to interpret the noise consensus, we have defined three cluster (and analagous cell) metrics. Stabilty indicates the propensity for a putative cluster to contain the same cells across noise-injected counts matrices. Promiscuity indicates a tendency for cells in a putative cluster to associate with other clusters across noise-injected counts matrices. Score represents the promiscuity substracted from the stability. 
 

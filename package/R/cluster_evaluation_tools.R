@@ -154,7 +154,7 @@ report_cluster_metrics<-function(cluster_labels,consensus_matrix, weighted_mean=
   setkeyv(cluster.scores.m,c("L1", "metric"))
   setkeyv(mean.overall, c("L1", "metric"))
   cluster.scores.m<-cluster.scores.m[mean.overall]
-  numbers<-as.character(sort(unique(na.omit(as.numeric(gsub("^X","",cluster.scores.m$L1))))))
+  numbers<-as.character(sort(unique(suppressWarnings(na.omit(as.numeric(gsub("^X","",cluster.scores.m$L1)))))))
   other<-unique(cluster.scores.m$L1[!(gsub("X","",cluster.scores.m$L1)%in%numbers)])
   level<-as.character(c(numbers,other))
   cluster.scores.m$L1<-factor(cluster.scores.m$L1, levels = level)

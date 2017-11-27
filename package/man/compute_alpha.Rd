@@ -2,10 +2,10 @@
 \alias{compute_alpha}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-%%  ~~function to do ... ~~
+Subfunction in \code{estimate_noiseparameters()}.
 }
 \description{
-%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+Subfunction in \code{estimate_noiseparameters()}.
 }
 \usage{
 compute_alpha(x, estimate_mu2sigma, sd_inflate, plot, granularity, file, alpha_granularity = alpha_granularity)
@@ -65,24 +65,24 @@ compute_alpha(x, estimate_mu2sigma, sd_inflate, plot, granularity, file, alpha_g
 ##--	or do  help(data=index)  for the standard data sets.
 
 ## The function is currently defined as
-function (x, estimate_mu2sigma, sd_inflate, plot, granularity, 
-    file, alpha_granularity = alpha_granularity) 
+function (x, estimate_mu2sigma, sd_inflate, plot, granularity,
+    file, alpha_granularity = alpha_granularity)
 {
     mu2sigma <- estimate_mu2sigma(x, plot, sd_inflate, file = file)
-    x1 <- melt(data.table(x, keep.rownames = TRUE), id.vars = c("rn", 
+    x1 <- melt(data.table(x, keep.rownames = TRUE), id.vars = c("rn",
         "transcripts"))
     if (plot == TRUE) {
-        testing <- melt(data.table(x, keep.rownames = TRUE)[, 
+        testing <- melt(data.table(x, keep.rownames = TRUE)[,
             -1, with = FALSE], id.vars = c("transcripts"))
-        g <- ggplot(data = testing[transcripts >= 1, ], aes(x = factor(round(log10(transcripts + 
-            0.25), digits = 3)), y = log2(value + 0.25))) + geom_violin(scale = "width") + 
-            xlab("\nERCC molecules per cell / log10") + ylab("Measured counts / log2\n") + 
+        g <- ggplot(data = testing[transcripts >= 1, ], aes(x = factor(round(log10(transcripts +
+            0.25), digits = 3)), y = log2(value + 0.25))) + geom_violin(scale = "width") +
+            xlab("\nERCC molecules per cell / log10") + ylab("Measured counts / log2\n") +
             ggtitle("The count measurement distribution as a function of actual transcript number.\n")
-        ggsave(paste(file, "countsdistribution_vs_moleculespercell.pdf", 
-            sep = "_"), plot = g, device = "pdf", width = 10.5, 
+        ggsave(paste(file, "countsdistribution_vs_moleculespercell.pdf",
+            sep = "_"), plot = g, device = "pdf", width = 10.5,
             height = 7.5, units = "in")
     }
-    y <- data.table(x1, key = "rn")[, mean(value), by = c("rn", 
+    y <- data.table(x1, key = "rn")[, mean(value), by = c("rn",
         "transcripts")]
     setkey(x1, rn)
     colnames(y) <- c("rn", "transcripts", "Mean")
@@ -90,24 +90,24 @@ function (x, estimate_mu2sigma, sd_inflate, plot, granularity,
     ERCCnames <- as.character(y$rn)
     setkey(y, "rn")
     z2 <- data.frame(as.character("DUMMY"), 1, 1, 1, 1)
-    colnames(z2) <- c("rn", "Mean", "p.nbinom", "p.poisson", 
+    colnames(z2) <- c("rn", "Mean", "p.nbinom", "p.poisson",
         "r.value")
     for (j in seq(from = 0, to = 1, by = alpha_granularity)) {
         if (j \%in\% seq(from = 0, to = 1, by = 0.05)) {
-            print(paste("Estimating error for ERCCs with alpha = ", 
+            print(paste("Estimating error for ERCCs with alpha = ",
                 j, sep = ""))
         }
         k = 1 - j
         y3 <- data.frame(as.character("DUMMY"), 1, 1, 1, 1)
-        colnames(y3) <- c("rn", "Mean", "p.nbinom", "p.poisson", 
+        colnames(y3) <- c("rn", "Mean", "p.nbinom", "p.poisson",
             "r.value")
         for (i in ERCCnames) {
             x2 <- x1[rn == i]
             p <- dim(x1[rn == i])[1]
             y.name <- as.character(y[rn == i]$rn)
             y.mean <- y[rn == i]$Mean
-            hx1 <- rnbinom(p * j, size = mean(x2$value)^2/((2^(mu2sigma[1, 
-                1] * log2(mean(x2$value)) + mu2sigma[1, 2] + 
+            hx1 <- rnbinom(p * j, size = mean(x2$value)^2/((2^(mu2sigma[1,
+                1] * log2(mean(x2$value)) + mu2sigma[1, 2] +
                 mu2sigma[1, 3]))^2 - mean(x2$value)), mu = mean(x2$value))
             hx2 <- rpois(p * k, mean(x2$value))
             if (j == 0) {
@@ -119,14 +119,14 @@ function (x, estimate_mu2sigma, sd_inflate, plot, granularity,
             else {
                 hx.mixed <- append(hx1, hx2)
             }
-            brakes <- seq(from = 0, to = max(hx.mixed, x2$value) + 
-                max(hx.mixed, x2$value)/granularity, by = max(hx.mixed, 
+            brakes <- seq(from = 0, to = max(hx.mixed, x2$value) +
+                max(hx.mixed, x2$value)/granularity, by = max(hx.mixed,
                 x2$value)/granularity)
             h1 <- hist(x2$value, plot = FALSE, breaks = brakes)
             h.mixed <- hist(hx.mixed, plot = FALSE, breaks = brakes)
-            rvalue <- sum(abs(h.mixed$counts - h1$counts)/(2 * 
+            rvalue <- sum(abs(h.mixed$counts - h1$counts)/(2 *
                 p))
-            y2 <- data.frame(rn = y.name, Mean = y.mean, p.nbinom = j, 
+            y2 <- data.frame(rn = y.name, Mean = y.mean, p.nbinom = j,
                 p.poisson = k, r.value = rvalue)
             y4 <- rbind(y3, y2)
             y3 <- y4
@@ -137,7 +137,7 @@ function (x, estimate_mu2sigma, sd_inflate, plot, granularity,
     z2 <- data.table(z2, key = "rn")
     DT <- z2[, min(r.value), by = rn]
     y1 <- data.frame(as.character("DUMMY"), 1, 1, 1, 1)
-    colnames(y1) <- c("rn", "Mean", "p.nbinom", "p.poisson", 
+    colnames(y1) <- c("rn", "Mean", "p.nbinom", "p.poisson",
         "r.value")
     for (i in DT$rn) {
         y2 <- z2[rn == i & r.value == DT[rn == i]$V1, ]
@@ -146,20 +146,20 @@ function (x, estimate_mu2sigma, sd_inflate, plot, granularity,
     }
     rvalues.dt <- data.table(y1[-1], key = "rn")
     rvalues.dt <- rvalues.dt[rvalues.dt$Mean >= 1, ]
-    alpha2mean <- lm(rvalues.dt$p.nbinom ~ log2(rvalues.dt$Mean + 
+    alpha2mean <- lm(rvalues.dt$p.nbinom ~ log2(rvalues.dt$Mean +
         0.025))
     if (plot == TRUE) {
-        g <- ggplot(data = rvalues.dt, aes(x = log2(Mean + 0.025), 
-            y = p.nbinom)) + geom_point(fill = "red", color = "black", 
-            size = 2.2, alpha = 0.6, pch = 21) + xlab("\nObserved mean ERCC expression, log2(expression)") + 
-            ylab("Neg. binomial contribution parameter, alpha\n") + 
-            ggtitle("The neg. binomial contribution is a function of gene expression.\n") + 
+        g <- ggplot(data = rvalues.dt, aes(x = log2(Mean + 0.025),
+            y = p.nbinom)) + geom_point(fill = "red", color = "black",
+            size = 2.2, alpha = 0.6, pch = 21) + xlab("\nObserved mean ERCC expression, log2(expression)") +
+            ylab("Neg. binomial contribution parameter, alpha\n") +
+            ggtitle("The neg. binomial contribution is a function of gene expression.\n") +
             geom_abline(slope = coef(alpha2mean)[2], intercept = coef(alpha2mean)[1])
-        ggsave(paste(file, "alpha2mu_correlation.pdf", sep = "_"), 
-            plot = g, device = "pdf", width = 10.5, height = 7.5, 
+        ggsave(paste(file, "alpha2mu_correlation.pdf", sep = "_"),
+            plot = g, device = "pdf", width = 10.5, height = 7.5,
             units = "in")
     }
-    alpha2mu <- data.frame(alpha2mu.slope = coef(alpha2mean)[2], 
+    alpha2mu <- data.frame(alpha2mu.slope = coef(alpha2mean)[2],
         alpha2mu.intercept = coef(alpha2mean)[1], sd.inflate = sd_inflate)
     parameters <- data.frame(cbind(mu2sigma, alpha2mu), row.names = c("parameter.value"))
     parameters

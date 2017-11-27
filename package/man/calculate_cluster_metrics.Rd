@@ -1,22 +1,25 @@
-\name{prepare_data}
-\alias{prepare_data}
+\name{calculate_cluster_metrics}
+\alias{calculate_cluster_metrics}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-%%  ~~function to do ... ~~
+Subfunction in \code{report_cluster_metrics()}.
 }
 \description{
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-prepare_data(x, y)
+calculate_cluster_metrics(cluster_labels, consensus_matrix, cluster_names)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{x}{
-%%     ~~Describe \code{x} here~~
+  \item{cluster_labels}{
+%%     ~~Describe \code{cluster_labels} here~~
 }
-  \item{y}{
-%%     ~~Describe \code{y} here~~
+  \item{consensus_matrix}{
+%%     ~~Describe \code{consensus_matrix} here~~
+}
+  \item{cluster_names}{
+%%     ~~Describe \code{cluster_names} here~~
 }
 }
 \details{
@@ -50,10 +53,16 @@ prepare_data(x, y)
 ##--	or do  help(data=index)  for the standard data sets.
 
 ## The function is currently defined as
-function (x, y) 
+function (cluster_labels, consensus_matrix, cluster_names)
 {
-    x$transcripts <- y[rownames(x), 1]
-    x
+    names(cluster_labels) <- cluster_names
+    clusters <- as.vector(as.character(unique(cluster_labels)))
+    names(clusters) <- as.character(unique(cluster_labels))
+    metric_list <- lapply(clusters, calculate_cluster_metrics_by_cluster,
+        consensus_matrix = consensus_matrix, cluster_labels = cluster_labels)
+    metric_list <- melt(metric_list, id.vars = c("size"))
+    colnames(metric_list)[c(2, 4)] <- c("metric", "rn")
+    metric_list
   }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

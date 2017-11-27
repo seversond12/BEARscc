@@ -2,7 +2,7 @@
 \alias{counts2mpc}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-%%  ~~function to do ... ~~
+Subfunction in \code{estimate_noiseparameters()}.
 }
 \description{
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
@@ -53,20 +53,20 @@ counts2mpc(x, plot, file)
 ##--	or do  help(data=index)  for the standard data sets.
 
 ## The function is currently defined as
-function (x, plot, file) 
+function (x, plot, file)
 {
-    x <- melt(data.table(x, keep.rownames = TRUE)[, -1, with = FALSE], 
+    x <- melt(data.table(x, keep.rownames = TRUE)[, -1, with = FALSE],
         id.vars = c("transcripts"))
     x <- x[transcripts > 0.9, ][, mean(value), by = transcripts]
     counts2mpc.fit <- lm(log2(x$V1 + 0.025) ~ log2(x$transcripts))
     if (plot == TRUE) {
-        g <- ggplot(data = x, aes(x = log2(transcripts), y = log2(V1 + 
-            0.025))) + geom_point() + xlab("\nERCC molecules per cell, log2(molecules)") + 
-            ylab("Observed counts, log2(counts) \n") + ggtitle("Correlation of measured counts as a function of actual transcript number.\n") + 
-            geom_abline(slope = coef(counts2mpc.fit)[2], intercept = coef(counts2mpc.fit)[1], 
+        g <- ggplot(data = x, aes(x = log2(transcripts), y = log2(V1 +
+            0.025))) + geom_point() + xlab("\nERCC molecules per cell, log2(molecules)") +
+            ylab("Observed counts, log2(counts) \n") + ggtitle("Correlation of measured counts as a function of actual transcript number.\n") +
+            geom_abline(slope = coef(counts2mpc.fit)[2], intercept = coef(counts2mpc.fit)[1],
                 color = "red")
-        ggsave(paste(file, "cor_counts2moleculespercell.pdf", 
-            sep = "_"), plot = g, device = "pdf", width = 10.5, 
+        ggsave(paste(file, "cor_counts2moleculespercell.pdf",
+            sep = "_"), plot = g, device = "pdf", width = 10.5,
             height = 7.5, units = "in")
     }
     counts2mpc.fit

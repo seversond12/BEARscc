@@ -2,7 +2,7 @@
 \alias{estimate_mu2sigma}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-%%  ~~function to do ... ~~
+Subfunction in \code{estimate_noiseparameters()}.
 }
 \description{
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
@@ -56,27 +56,27 @@ estimate_mu2sigma(x, plot, sd_inflate, file = "Rplot")
 ##--	or do  help(data=index)  for the standard data sets.
 
 ## The function is currently defined as
-function (x, plot, sd_inflate, file = "Rplot") 
+function (x, plot, sd_inflate, file = "Rplot")
 {
-    x1 <- melt(data.table(x, keep.rownames = TRUE), id.vars = c("rn", 
+    x1 <- melt(data.table(x, keep.rownames = TRUE), id.vars = c("rn",
         "transcripts"))
     ERCC.sd <- data.table(x1[, sd(value), by = c("rn", "transcripts")])
     ERCC.sd$mean <- x1[, mean(value), by = c("rn", "transcripts")]$V1
     ERCC.sd[ERCC.sd$V1 == 0]$V1 <- NA
     ERCC.sd[ERCC.sd$V1 == 0]$mean <- NA
     mu2sigma.fit <- lm(log2(ERCC.sd$V1) ~ log2(ERCC.sd$mean))
-    mu2sigma <- data.frame(mu2sigma.slope = coef(mu2sigma.fit)[2], 
+    mu2sigma <- data.frame(mu2sigma.slope = coef(mu2sigma.fit)[2],
         mu2sigma.intercept = coef(mu2sigma.fit)[1], max.res = max(mu2sigma.fit$residuals))
     if (plot == TRUE) {
-        g <- ggplot(data = ERCC.sd, aes(x = log2(mean), y = log2(V1))) + 
-            geom_point() + geom_abline(slope = coef(mu2sigma.fit)[2], 
-            intercept = coef(mu2sigma.fit)[1]) + xlab("\nMean ERCC expression / log2") + 
-            ylab("Standard deviation of ERCC expression / log2\n") + 
-            ggtitle("Relationship between standard deviation and mean of ERCC spike in measurements\n") + 
-            geom_abline(slope = coef(mu2sigma.fit)[2], color = "red", 
-                intercept = coef(mu2sigma.fit)[1] + sd_inflate * 
+        g <- ggplot(data = ERCC.sd, aes(x = log2(mean), y = log2(V1))) +
+            geom_point() + geom_abline(slope = coef(mu2sigma.fit)[2],
+            intercept = coef(mu2sigma.fit)[1]) + xlab("\nMean ERCC expression / log2") +
+            ylab("Standard deviation of ERCC expression / log2\n") +
+            ggtitle("Relationship between standard deviation and mean of ERCC spike in measurements\n") +
+            geom_abline(slope = coef(mu2sigma.fit)[2], color = "red",
+                intercept = coef(mu2sigma.fit)[1] + sd_inflate *
                   max(mu2sigma.fit$residuals))
-        ggsave(paste(file, "mu2sigma.pdf", sep = "_"), plot = g, 
+        ggsave(paste(file, "mu2sigma.pdf", sep = "_"), plot = g,
             device = "pdf", width = 10.5, height = 7.5, units = "in")
     }
     mu2sigma

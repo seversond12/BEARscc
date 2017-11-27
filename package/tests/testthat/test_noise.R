@@ -11,7 +11,7 @@ ERCC.meta.dt<- fread("ERCC.meta.tsv")
 ERCC.counts.df<-data.frame(data.counts.dt[GENE_ID%like%"ERCC-",], row.names="GENE_ID")
 data.counts.df<-data.frame(data.counts.dt, row.names = "GENE_ID")
 ERCC.meta.df<-data.frame(ERCC.meta.dt, row.names="ERCC_ID")
-results<-estimate_noiseparameters(ERCC.counts.df,ERCC.meta.df, data.counts.df, granularity=30, write.noise.model=FALSE, plot=FALSE, alpha_granularity = 0.25)
+results<-estimate_noiseparameters(ERCC.counts.df, data.counts.df,ERCC.meta.df, granularity=30, write.noise.model=FALSE, plot=FALSE, alpha_granularity = 0.25)
 test_that("estimation output?", {
   expect_true(is.list(results))
   expect_equal(dim(results$bayes_parameters)[2], dim(results$original.counts)[1]+4)

@@ -1,19 +1,25 @@
-\name{compute_genewise_zeroinflation}
-\alias{compute_genewise_zeroinflation}
+\name{randomizer}
+\alias{randomizer}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-%%  ~~function to do ... ~~
+Subfunction in \code{estimate_noiseparameters()}.
 }
 \description{
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-compute_genewise_zeroinflation(x)
+randomizer(x, parameters, total_sampling)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{x}{
 %%     ~~Describe \code{x} here~~
+}
+  \item{parameters}{
+%%     ~~Describe \code{parameters} here~~
+}
+  \item{total_sampling}{
+%%     ~~Describe \code{total_sampling} here~~
 }
 }
 \details{
@@ -47,11 +53,26 @@ compute_genewise_zeroinflation(x)
 ##--	or do  help(data=index)  for the standard data sets.
 
 ## The function is currently defined as
-function (x) 
+function (x, parameters, total_sampling)
 {
-    bayes_list <- list()
-    bayes_list$genewise <- data.frame(rowSums(x == 0)/dim(x)[2])
-    bayes_list
+    NB_intercept <- as.numeric(parameters$alpha2mu.intercept)
+    NB_slope <- as.numeric(parameters$alpha2mu.slope)
+    Mean2SDcor_residual <- as.numeric(parameters$max.res)
+    Mean2SDcor_slope <- as.numeric(parameters$mu2sigma.slope)
+    Mean2SDcor_intercept <- as.numeric(parameters$mu2sigma.intercept)
+    sd_inflate <- as.numeric(parameters$sd.inflate)
+    p <- NB_intercept + NB_slope * log2(x + 0.025)
+    if (p < 0) {
+        p = 0
+    }
+    if (p > 1) {
+        p = 1
+    }
+    hx1 <- rnbinom(total_sampling * p, size = x^2/((2^(Mean2SDcor_slope *
+        log2(x) + Mean2SDcor_intercept + Mean2SDcor_residual *
+        sd_inflate))^2 - x), mu = x)
+    hx2 <- rpois(total_sampling * (1 - p), x)
+    sample(append(hx1, hx2), size = 1, replace = TRUE)
   }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

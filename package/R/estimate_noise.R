@@ -228,12 +228,12 @@ estimate_missingdata<-function(x, y, counts2mpc.fit, plot, file, dropout_inflate
 ################################## USER COMMANDS ############################################
 ##x is the dataframe of ERCCs, y is the data frame of ERCCs with actual molecules per cell in the second column, z is the counts matrix
 ##model_view should be a vector of c("Optimized", "Poisson", "Neg. Binomial", "Observed")
-estimate_noiseparameters<-function(x,y,z, plot=FALSE, sd_inflate=0,granularity=300,write.noise.model=TRUE,file="noise_estimation",model_view=c("Observed","Optimized"),total_sampling=2500, dropout_inflate=1, alpha_granularity=0.005){
+estimate_noiseparameters<-function(spike_counts.df,endogenous_counts.df,spike_conc.df, plot=FALSE, sd_inflate=0,granularity=300,write.noise.model=TRUE,file="noise_estimation",model_view=c("Observed","Optimized"),total_sampling=2500, dropout_inflate=1, alpha_granularity=0.005){
   force(granularity)
   force(sd_inflate)
   force(alpha_granularity)
-  ERCC.prepared.counts<-prepare_data(x, y)
-  actual.prepared.counts<-z
+  ERCC.prepared.counts<-prepare_data(spike_counts.df, spike_conc.df)
+  actual.prepared.counts<-endogenous_counts.df
   print("Fitting parameter alpha to establish ERCC-derived noise model.")
   parameters<-compute_alpha(ERCC.prepared.counts,estimate_mu2sigma, granularity=granularity, sd_inflate=sd_inflate, plot=plot, file=file, alpha_granularity=alpha_granularity)
   ERCC.m.counts<-melt(data.table(ERCC.prepared.counts, keep.rownames = TRUE), id.vars = c("rn", "transcripts"))
@@ -264,9 +264,9 @@ estimate_noiseparameters<-function(x,y,z, plot=FALSE, sd_inflate=0,granularity=3
   bayes_dropouts$ERCC_parameters<-parameters
   noise_model<-bayes_dropouts
   noise_model$models.dt<-models.dt
-  noise_model$original.counts<-z
-  noise_model$ERCC.concentrations<-x
-  noise_model$ERCC.counts<-y
+  noise_model$original.counts<-endogenous_counts.df
+  noise_model$ERCC.concentrations<-spike_conc.df
+  noise_model$ERCC.counts<-spike_counts.df
   if (write.noise.model==TRUE) {
     write.table(data.table(noise_model$ERCC_parameters, keep.rownames = TRUE),file=paste(file, "parameters4randomize.xls", sep="_"), quote=FALSE, sep="\t", row.names = FALSE)
     write.table(noise_model$bayes_parameters,file=paste(file, "bayesianestimates.xls", sep="_"), quote=FALSE, sep="\t", row.names=FALSE )

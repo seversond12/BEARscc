@@ -8,17 +8,17 @@ Estimates noise in single cell data.
 Estimates the drop-out model and technical variance from the ERCC spike-ins present in the sample.
 }
 \usage{
-estimate_noiseparameters(x, y, z, plot = FALSE, sd_inflate = 0, granularity = 300, write.noise.model = TRUE, file = "noise_estimation", model_view = c("Observed", "Optimized"), total_sampling = 2500, dropout_inflate = 1, alpha_granularity = 0.005)
+estimate_noiseparameters(spike_counts.df, endogenous_counts.df, spike_conc.df, plot = FALSE, sd_inflate = 0, granularity = 300, write.noise.model = TRUE, file = "noise_estimation", model_view = c("Observed", "Optimized"), total_sampling = 2500, dropout_inflate = 1, alpha_granularity = 0.005)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{x}{
+  \item{spike_counts.df}{
 A data frame of spike-in counts for each sample.
 }
-  \item{y}{
+  \item{endogenous_counts.df}{
 A data frame of endogenous gene expression counts for each sample.
 }
-  \item{z}{
+  \item{spike_conc.df}{
 A data frame with spike-in IDs as rownames and expected spike-in counts in the next column.
 }
   \item{plot}{
@@ -80,6 +80,8 @@ Maintainer: \packageMaintainer{BEARscc}
 ##---- Should be DIRECTLY executable !! ----
 ##-- ==>  Define data, use random,
 ##--	or do  help(data=index)  for the standard data sets.
+
+
 
 ## The function is currently defined as
 function (x, y, z, plot = FALSE, sd_inflate = 0, granularity = 300,

@@ -265,8 +265,8 @@ estimate_noiseparameters<-function(spike_counts.df,endogenous_counts.df,spike_co
   noise_model<-bayes_dropouts
   noise_model$models.dt<-models.dt
   noise_model$original.counts<-endogenous_counts.df
-  noise_model$ERCC.concentrations<-spike_conc.df
-  noise_model$ERCC.counts<-spike_counts.df
+  noise_model$spike.conc<-spike_conc.df
+  noise_model$spike.counts<-spike_counts.df
   if (write.noise.model==TRUE) {
     write.table(data.table(noise_model$ERCC_parameters, keep.rownames = TRUE),file=paste(file, "parameters4randomize.xls", sep="_"), quote=FALSE, sep="\t", row.names = FALSE)
     write.table(noise_model$bayes_parameters,file=paste(file, "bayesianestimates.xls", sep="_"), quote=FALSE, sep="\t", row.names=FALSE )

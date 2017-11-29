@@ -1,7 +1,7 @@
 \name{compute_consensus}
 \alias{compute_consensus}
 \alias{create_cm}
-%- Also NEED an '\alias' for EACH other topic documented here.
+
 \title{
 Compute consensus matrix.
 }
@@ -53,7 +53,7 @@ data("analysis_examples")
 noise_consensus <- compute_consensus(clusters.df)
 noise_consensus
 }
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
-\keyword{ models }% use one of  RShowDoc("KEYWORDS")
-\keyword{ error }% __ONLY ONE__ keyword per line
+
+
+\keyword{ models }
+\keyword{ error }

@@ -23,8 +23,15 @@ report_cell_metrics(cluster_labels, consensus_matrix)
 }
 
 \value{
-
-
+  A melted data.table of BEARscc metrics for each cell:
+\tabular{cll}{
+[,1] \tab "Cluster identity" \tab The number of the cluster within the respective clustering \cr
+[,2] \tab "Cell" \tab The identifier of the sample in question.\cr
+[,3] \tab "Cluster size" \tab Number of samples in the cluster.\cr
+[,4] \tab "Metric" \tab Whether the metric is the BEARscc score, promiscuity, or stability. \cr
+[,5] \tab "Value" \tab Value of the relevant BEARscc metric for the cell in a given clustering. \cr
+[,6] \tab "Clustering"\tab The clustering pertinant to the cell-wise metrics described. \cr
+  }
 }
 \references{
 %% ~put references to the literature/web site here ~
@@ -35,6 +42,15 @@ report_cell_metrics(cluster_labels, consensus_matrix)
 Maintainer: \packageMaintainer{BEARscc}
 }
 
+\section{A brief description of subfunctions}{
+  \code{report_cell_metrics} relies on the following subfunctions to report BEARscc metrics for each cell. These functions share many common options with the user interactive function, \code{report_cell_metrics}.For further detail please examine source code in the R directory of this package:\cr
+  \itemize{
+    \item \code{clusters<-rownames(cluster_labels)}
+    \item \code{calculate_cell_metrics(cluster_labels,noise_consensus,clusters)}
+    \item \code{cluster_names<-as.character(unique(cluster_labels))}
+    \item \code{calculate_cell_metrics_by_cluster(cluster_names, noise_consensus, cluster_labels))}
+  }
+}
 \examples{
 data(analysis_examples)
 

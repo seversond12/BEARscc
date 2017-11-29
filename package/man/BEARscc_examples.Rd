@@ -5,7 +5,7 @@
 \alias{ERCC.meta.df}
 \docType{data}
 \title{
-Toy example data for BEARscc.
+Example data for BEARscc.
 }
 \description{
 A toy dataset for applying BEARscc functions as described in the README on https://bitbucket.org/bsblabludwig/bearscc.git.

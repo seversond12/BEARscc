@@ -164,5 +164,5 @@ function (x, y, z, plot = FALSE, sd_inflate = 0, granularity = 300,
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
-\keyword{ ~kwd1 }% use one of  RShowDoc("KEYWORDS")
-\keyword{ ~kwd2 }% __ONLY ONE__ keyword per line
+\keyword{ function }% use one of  RShowDoc("KEYWORDS")
+

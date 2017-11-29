@@ -9,10 +9,10 @@
 \alias{BEARscc_clusts.df}
 \docType{data}
 \title{
-Downstream data objects for use in various help pages for dynamic execution resulting from running tutorial in README and vignette on \code{BEARscc_examples}.
+BEARscc downstream example objects.
 }
 \description{
-The \code{analysis_examples} Rdata object contains a toy dataset for applying BEARscc functions as described in the README on https://bitbucket.org/bsblabludwig/bearscc.git.
+The \code{analysis_examples} Rdata object contains downstream data objects for use in various help pages for dynamic execution resulting from running tutorial in README and vignette on \code{BEARscc_examples}. The objects are a result of applying BEARscc functions as described in the README found at https://bitbucket.org/bsblabludwig/bearscc.git.
 }
 \usage{data("analysis_examples")}
 \format{

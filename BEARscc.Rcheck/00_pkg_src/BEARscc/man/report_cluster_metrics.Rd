@@ -2,7 +2,7 @@
 \alias{report_cluster_metrics}
 \alias{calculate_cluster_metrics}
 \alias{calculate_cluster_metrics_by_cluster}
-
+%- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Reports BEARscc metrics for clusters.
 }
@@ -32,8 +32,11 @@ A flag indicating whether to weigh observed clusters evenly or scale them by the
 }
 
 \value{
-
-
+%%  ~Describe the value returned
+%%  If it is a LIST, use
+%%  \item{comp1 }{Description of 'comp1'}
+%%  \item{comp2 }{Description of 'comp2'}
+%% ...
 }
 \references{
 %% ~put references to the literature/web site here ~

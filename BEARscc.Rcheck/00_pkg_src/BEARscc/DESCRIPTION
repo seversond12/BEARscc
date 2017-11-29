@@ -1,0 +1,14 @@
+Package: BEARscc
+Type: Package
+Title: BEARscc (Bayesian ERCC Assesstment of Robustness of Single Cell
+        Clusters)
+Version: 0.99.0
+Author: David T. Severson <david.severson@ludwig.ox.ac.uk>
+Maintainer: Benjamin Schuster-Boeckler <benjamin.schuster-boeckler@ludwig.ox.ac.uk>
+Description: BEARscc is a noise estimation and injection tool that is designed to assess putative single-cell RNA-seq clusters in the context of experimental noise estimated by ERCC spike-in controls.
+License: GPL-3
+Imports: ggplot2, data.table
+Suggests: testthat, cowplot, knitr, rmarkdown, BiocStyle
+VignetteBuilder: knitr
+NeedsCompilation: no
+Packaged: 2017-11-29 06:34:17 UTC; davidseverson

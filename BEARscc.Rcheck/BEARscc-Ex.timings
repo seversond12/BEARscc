@@ -1,0 +1,6 @@
+name	user	system	elapsed
+BEARscc_examples	0.012	0.002	0.014	
+analysis_examples	0.009	0.001	0.009	
+cluster_consensus	0.012	0.002	0.013	
+compute_consensus	0.062	0.005	0.067	
+create_noiseinjected_counts	14.591	 0.114	14.884	

@@ -1,5 +1,13 @@
 \name{estimate_noiseparameters}
 \alias{estimate_noiseparameters}
+\alias{prepare_data}
+\alias{estimate_mu2sigma}
+\alias{compute_alpha}
+\alias{compute_models}
+\alias{estimate_undetected2molpercell}
+\alias{estimate_missingdata}
+\alias{compute_genewise_zeroinflation}
+\alias{counts2mpc}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Estimates noise in single cell data.
@@ -8,7 +16,10 @@ Estimates noise in single cell data.
 Estimates the drop-out model and technical variance from the ERCC spike-ins present in the sample.
 }
 \usage{
-estimate_noiseparameters(spike_counts.df, endogenous_counts.df, spike_conc.df, plot = FALSE, sd_inflate = 0, granularity = 300, write.noise.model = TRUE, file = "noise_estimation", model_view = c("Observed", "Optimized"), total_sampling = 2500, dropout_inflate = 1, alpha_granularity = 0.005)
+estimate_noiseparameters(spike_counts.df, endogenous_counts.df, spike_conc.df,\cr
+  plot = FALSE, sd_inflate = 0, granularity = 300, write.noise.model = TRUE,\cr
+  file = "noise_estimation", model_view = c("Observed", "Optimized"),\cr
+  total_sampling = 2500, dropout_inflate = 1, alpha_granularity = 0.005)\cr
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -67,102 +78,48 @@ BEARscc consists of three steps: modelling technical variance based on spike-ins
 
 Maintainer: \packageMaintainer{BEARscc}
 }
-\note{
-%%  ~~further notes~~
-}
 
+\section{Subfunctions of note}{
+  \code{estimate_noiseparameters} relies on the following subfunctions to estimate noise. These functions share many common options with the user function. For those options that are internal to the programming; these are annotated to give an idea of flow. For further detail please examine source code in R directory of this package:\cr
+  \itemize{
+    \item spikes_prepared <- \code{prepare_data(spike_counts.df, spike_conc.df)}
+    \item mu2sigma <- \code{estimate_mu2sigma(spikes.prepared, spike_conc.df), plot, sd_inflate, file)}
+    \item parameters <- \code{compute_alpha(spikes_prepared, sd_inflate, plot, granularity, file, alpha_granularity)}
+    \item   spikes_melted <- melt(data.table(spikes_prepared, keep.rownames = TRUE), id.vars = c("rn", "transcripts"))
+    \item models.dt <- \code{compute_models(spikes_melted, parameters)}
+    \item counts2mpc.fit <- \code{counts2mpc(spikes_prepared,plot,file)}
+    \item \code{estimate_missingdata(spikes_prepared, endogenous_counts.df, counts2mpc.fit, plot, file, dropout_inflate)}
+    \item \code{compute_genewise_zeroinflation(endogenous_counts.df)}
+    \item \code{spikes.dt <- data.table(spikes_prepared, keep.rownames = TRUE)}
+    \item \code{spikes.dt <- spikes.dt[spikes.dt[,rowSums(.SD==0)>1, .SD=c(2:dim(spikes.dt)[2])],][transcripts>0,]}
+    \item \code{undetected2mpc <- estimate_undetected2molpercell(spikes.dt, plot, file)}
+  }
+}
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
 %% ~~objects to See Also as \code{\link{help}}, ~~~
 }
 \examples{
-##---- Should be DIRECTLY executable !! ----
-##-- ==>  Define data, use random,
-##--	or do  help(data=index)  for the standard data sets.
+data(BEARscc_examples)
 
+#For excecution on local machine
+estimated_noise <- estimate_noiseparameters(ERCC.counts.df,
+                                    data.counts.df,
+                                    ERCC.meta.df,
+                                    granularity=30,
+                                    write.noise.model=FALSE)
+estimated_noise
 
+#To save results as files for high power cluster computation later
+estimate_noiseparameters(ERCC.counts.df,
+                                    data.counts.df,
+                                    ERCC.meta.df,
+                                    granularity=30,
+                                    write.noise.model=TRUE,
+                                    file="noise_estimation",
+                                    model_view=c("Observed","Optimized"))
 
-## The function is currently defined as
-function (x, y, z, plot = FALSE, sd_inflate = 0, granularity = 300,
-    write.noise.model = TRUE, file = "noise_estimation", model_view = c("Observed",
-        "Optimized"), total_sampling = 2500, dropout_inflate = 1,
-    alpha_granularity = 0.005)
-{
-    force(granularity)
-    force(sd_inflate)
-    force(alpha_granularity)
-    ERCC.prepared.counts <- prepare_data(x, y)
-    actual.prepared.counts <- z
-    print("Fitting parameter alpha to establish ERCC-derived noise model.")
-    parameters <- compute_alpha(ERCC.prepared.counts, estimate_mu2sigma,
-        granularity = granularity, sd_inflate = sd_inflate, plot = plot,
-        file = file, alpha_granularity = alpha_granularity)
-    ERCC.m.counts <- melt(data.table(ERCC.prepared.counts, keep.rownames = TRUE),
-        id.vars = c("rn", "transcripts"))
-    ERCC.m.valid <- ERCC.m.counts[, mean(value) > 0, by = "rn"]
-    setkey(ERCC.m.valid, "rn")
-    setkey(ERCC.m.counts, "rn")
-    ERCC.m.counts <- ERCC.m.valid[ERCC.m.counts, ][V1 == TRUE,
-        ][, -2, with = FALSE]
-    models.dt <- compute_models(ERCC.m.counts, parameters)
-    models.dt$distribution <- gsub(TRUE, "Observed", models.dt$variable !=
-        "Mixed" & models.dt$variable != "NBinom" & models.dt$variable !=
-        "Poisson")
-    models.dt[models.dt$variable == "Mixed", ]$distribution <- "Optimized"
-    models.dt[models.dt$variable == "Poisson"]$distribution <- "Poisson"
-    models.dt[models.dt$variable == "NBinom"]$distribution <- "Neg. Binomial"
-    if (plot == TRUE) {
-        ERCCnames <- as.character(unique(models.dt[order(transcripts)]$rn))
-        round(length(ERCCnames)/6)
-        dir.create("ERCCfit_plots")
-        for (i in seq(from = 1, to = round(length(ERCCnames)/6),
-            by = 1)) {
-            p <- ERCCnames[seq(from = i, to = length(ERCCnames),
-                by = round(length(ERCCnames)/6))]
-            g <- ggplot(data = models.dt[rn \%in\% p, ][distribution \%in\%
-                model_view], aes(x = value)) + geom_histogram(aes(fill = factor(distribution,
-                levels = c("Poisson", "Neg. Binomial", "Optimized",
-                  "Observed"))), alpha = 0.3, position = "identity",
-                bins = granularity) + facet_wrap(~rn, ncol = 3,
-                nrow = 4, scales = "free") + ylab("Observation density\n") +
-                labs(fill = "Model") + xlab("\nERCC expression / normalized counts") +
-                ggtitle("Approximating technical noise using a refined mixed distribution.\n") +
-                scale_color_discrete(guide = FALSE) + theme(axis.text.x = element_text(angle = 90,
-                hjust = 1, size = 10))
-            savefile <- paste("ERCCfit_plots/", paste(file, "ERCCfits_subset",
-                i, "plot.pdf", sep = "_"), sep = "")
-            ggsave(savefile, plot = g, device = "pdf", width = 10.5,
-                height = 7.5, units = "in")
-        }
-    }
-    counts2mpc.fit <- counts2mpc(ERCC.prepared.counts, plot = plot,
-        file = file)
-    bayes_dropouts <- estimate_missingdata(ERCC.prepared.counts,
-        actual.prepared.counts, counts2mpc.fit, plot = plot,
-        file = file, dropout_inflate = dropout_inflate)
-    bayes_dropouts$ERCC_parameters <- parameters
-    noise_model <- bayes_dropouts
-    noise_model$models.dt <- models.dt
-    noise_model$original.counts <- z
-    noise_model$ERCC.concentrations <- x
-    noise_model$ERCC.counts <- y
-    if (write.noise.model == TRUE) {
-        write.table(data.table(noise_model$ERCC_parameters, keep.rownames = TRUE),
-            file = paste(file, "parameters4randomize.xls", sep = "_"),
-            quote = FALSE, sep = "\t", row.names = FALSE)
-        write.table(noise_model$bayes_parameters, file = paste(file,
-            "bayesianestimates.xls", sep = "_"), quote = FALSE,
-            sep = "\t", row.names = FALSE)
-        print("Parameters have been saved into the current directory in bayesianestimates.xls and parameters4randomize.xls.")
-        noise_model
-    }
-    else {
-        noise_model
-    }
-  }
 }
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
-\keyword{ function }% use one of  RShowDoc("KEYWORDS")
-
+\keyword{ distribution }% use one of  RShowDoc("KEYWORDS")
+\keyword{ models }

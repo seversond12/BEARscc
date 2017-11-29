@@ -2,10 +2,10 @@
 \alias{create_noiseinjected_counts}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Computes the simulated technical replicates.
+Computes BEARscc simulated technical replicates.
 }
 \description{
-Computes the simulated technical replicates from the previously estimated noise parameters.
+Computes BEARscc simulated technical replicates from the previously estimated noise parameters computed with the function \code{estimate_noise_paramters()}.
 }
 \usage{
 create_noiseinjected_counts(noise_parameters, total_sampling = 2500, n = 3)

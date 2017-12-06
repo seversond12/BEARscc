@@ -1,3 +1,8 @@
 import("data.table")
 import("ggplot2")
+importFrom("graphics", "hist")
+importFrom("stats", "as.dist", "coef", "cutree", "hclust", "lm",
+             "na.omit", "rnbinom", "rpois", "sd")
+importFrom("utils", "write.table")
+import("parallel")
 exportPattern("^[[:alpha:]]+")

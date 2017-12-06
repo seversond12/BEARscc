@@ -41,9 +41,8 @@ consistently, irrespective of technical variation. For more details, see the
 
 It is our hope that BEARscc will shortly be available on Bioconductor. 
 For now, installing BEARscc is easy. You can download a source package
-[here](https://bitbucket.org/bsblabludwig/bearscc/src/cb3292b74cfa67d70ef01d5c83a59323b945efec/builds/BEARscc_0.1.1.tar.gz). 
-You can then use `install.packages`, but give it the location of the 
-downloaded file:
+[here](http://goo.gl/cxANiN). You can then use `install.packages`, 
+but give it the location of the downloaded file:
 
 
 ```{r include=TRUE}

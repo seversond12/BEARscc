@@ -53,9 +53,9 @@ Maintainer: \packageMaintainer{BEARscc}
 }
 
 \seealso{
-  \code{compute_consensus}
-  \code{report_cluster_metrics}
-  \code{report_cell_metrics}
+    \code{compute_consensus}
+    \code{report_cluster_metrics}
+    \code{report_cell_metrics}
 }
 \examples{
 data(analysis_examples)

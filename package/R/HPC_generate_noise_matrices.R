@@ -9,7 +9,7 @@ cl<-2
 
 ##function that permutes counts with technical noise
 HPC_randomizer<-function(x,parameters,total_sampling){
-    NB_intercept<-as.numeric(parameters$alpha2mu.intercept) 
+    NB_intercept<-as.numeric(parameters$alpha2mu.intercept)
     NB_slope<-as.numeric(parameters$alpha2mu.slope)
     Mean2SDcor_residual<-as.numeric(parameters$max.res)
     Mean2SDcor_slope<-as.numeric(parameters$mu2sigma.slope)
@@ -26,22 +26,22 @@ HPC_randomizer<-function(x,parameters,total_sampling){
 }
 
 ##The count permuter permutes zeros and also calls randomizer()
-HPC_permute_count<-function(x, probs4detection.k, probabilityA, 
+HPC_permute_count<-function(x, probs4detection.k, probabilityA,
     parameters, gene, HPC_randomizer, total_sampling){
     force(parameters)
     if (x==0) {
-        nx<-sample(as.numeric(rownames(probs4detection.k)), 1, 
+        nx<-sample(as.numeric(rownames(probs4detection.k)), 1,
             prob=probabilityA, replace=TRUE)
         if (nx>0) {
-            nx<-HPC_randomizer(probs4detection.k[as.character(nx),]$Counts, 
+            nx<-HPC_randomizer(probs4detection.k[as.character(nx),]$Counts,
                 parameters, total_sampling)
         }
-    } 
+    }
     else {
         if (ceiling(x) < max(as.numeric(rownames(probs4detection.k)))){
             probabilityB<-as.numeric(
                 probs4detection.k[as.character(ceiling(x)),]$Py0givenk)
-            nx<-sample(c(0,x),1, prob=as.numeric(c(probabilityB, 
+            nx<-sample(c(0,x),1, prob=as.numeric(c(probabilityB,
                 1-probabilityB)))
                 if (nx>0) {
                     nx<-HPC_randomizer(nx, parameters, total_sampling)
@@ -54,72 +54,33 @@ HPC_permute_count<-function(x, probs4detection.k, probabilityA,
 }
 
 ##seperates out genes for analysis
-HPC_genewise_permute_count<-function(x,probs4detection.k, 
-    probs4detection.genes, parameters,permute_count, randomizer, 
+HPC_genewise_permute_count<-function(x,probs4detection.k,
+    probs4detection.genes, parameters,permute_count, randomizer,
     total_sampling=2500){
     gene_name<-NULL
     print(x[1])
     print(sub("[-,(,)]",".",x[1]))
     probabilityA<-probs4detection.genes[gsub("[-,(,)]",".",x[1]),]
     force(total_sampling)
-    apply(data.frame(as.numeric(x[-1])),1, `HPC_permute_count`, 
-        probs4detection.k,probabilityA, parameters,gene=gene_name, 
+    apply(data.frame(as.numeric(x[-1])),1, `HPC_permute_count`,
+        probs4detection.k,probabilityA, parameters,gene=gene_name,
         HPC_randomizer,total_sampling)
 }
 
-##prepares bayesian file for fast row indexing. 
-prepare_probabilities<-function(x,probs4detection, parameters, 
-    HPC_genewise_permute_count=HPC_genewise_permute_count, 
-    HPC_permute_count=HPC_permute_count, HPC_randomizer=HPC_randomizer, 
+##prepares bayesian file for fast row indexing.
+prepare_probabilities<-function(x,probs4detection, parameters,
+    HPC_genewise_permute_count=HPC_genewise_permute_count,
+    HPC_permute_count=HPC_permute_count, HPC_randomizer=HPC_randomizer,
     total_sampling=2500){
-    probs4detection.genes<-t(data.frame(probs4detection, 
+    probs4detection.genes<-t(data.frame(probs4detection,
         row.names = "k")[,4:eval(dim(probs4detection)[2]-1)])
-    rownames(probs4detection.genes)<-gsub("^X([0-9])","\\1", 
+    rownames(probs4detection.genes)<-gsub("^X([0-9])","\\1",
         rownames(probs4detection.genes))
-    probs4detection.k<-data.frame(probs4detection[,2:4, 
+    probs4detection.k<-data.frame(probs4detection[,2:4,
         with=FALSE],row.names = "k")
-    x[,parApply(cl,.SD, 1 ,`HPC_genewise_permute_count`, 
-        probs4detection.k=probs4detection.k, 
-        probs4detection.genes=probs4detection.genes, 
-        total_sampling=total_sampling, HPC_permute_count=HPC_permute_count, 
+    x[,parApply(cl,.SD, 1 ,`HPC_genewise_permute_count`,
+        probs4detection.k=probs4detection.k,
+        probs4detection.genes=probs4detection.genes,
+        total_sampling=total_sampling, HPC_permute_count=HPC_permute_count,
         HPC_randomizer=HPC_randomizer, parameters=parameters)]
 }
-
-
-
-#### Example template for HPC run of BEARscc ####
-#written as function to block comment
-example_code<-TRUE
-if ( example_code == FALSE ){
-
-#### Load data ####
-no_cores<-4
-counts.dt<-fread("brain_control_example.tsv")
-counts.dt<-counts.dt[rowSums(counts.dt[,.SD>0,.SD=c(2:dim(counts.dt)[2])])>0,]
-#generate files below with estimate_noiseparameters()
-probs4detection<-fread("example_bayesianestimates.xls")
-parameters<-fread("example_parameters4randomize.xls")
-
-########
-
-#### Simulate replicates ####
-
-cl <- makeCluster(no_cores, FORK=TRUE)
-counts.error<-prepare_probabilities(counts.dt, 
-    probs4detection=probs4detection, parameters=parameters, 
-    HPC_genewise_permute_count=HPC_genewise_permute_count, 
-    HPC_permute_count=HPC_permute_count, HPC_randomizer=HPC_randomizer,
-    total_sampling=2500)
-counts.error.df<-data.frame(t(counts.error), row.names=counts.dt$GENE_ID)
-counts.error.df<-round(counts.error.df)
-counts.error.dt<-data.table(counts.error.df, keep.rownames=TRUE)
-colnames(counts.error.dt)<-colnames(counts.dt)
-write.table(counts.error.dt, file=paste("noise_perturbed_count_tables/", 
-    paste(TASKID,"noise_perturbation", "perturbed_counts.txt",sep="_"), 
-    sep=""), quote =FALSE, row.names=FALSE)
-stopCluster(cl)
-
-#########
-}
-
-

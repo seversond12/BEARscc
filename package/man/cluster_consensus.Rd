@@ -7,8 +7,8 @@ Cluster the consensus matrix.
 }
 \description{
 This function will perform hierarchical clustering on the noise consensus matrix
-    allowing the user to investigate the appropriate number of clusters, \emph{k},
-    considering the noise within the experiment.
+    allowing the user to investigate the appropriate number of clusters,
+    \emph{k}, considering the noise within the experiment.
 }
 \usage{
 cluster_consensus(consensus_matrix, cluster_num, method = "complete")

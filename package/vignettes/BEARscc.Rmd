@@ -45,27 +45,28 @@ For now, installing BEARscc is easy. You can download a source package
 but give it the location of the downloaded file:
 
 
-```{r include=TRUE}
+```{r install_BEARscc, include=TRUE}
 install.packages('../inst/BEARscc_0.99.0.tar.gz', repos = NULL, type="source")
 library("BEARscc")
 ```
 
 
 ##Citation
-BEARscc and its associated manuscript are currently under review for publication
-   at a peer-reviewed journal. For now please cite the bioRxiv pre-print:
-   
-   Severson, DT. Owen, RP. White, MJ. Lu, X. Schuster-Boeckler, B. 
-   BEARscc determines robustness of single-cell clusters using simulated
-   technical replicates. doi: https://doi.org/10.1101/118919
-   
+BEARscc and its associated manuscript are currently under review for 
+publication at a peer-reviewed journal. For now please cite the 
+bioRxiv pre-print:
+
+    Severson, DT. Owen, RP. White, MJ. Lu, X. Schuster-Boeckler, B. 
+    BEARscc determines robustness of single-cell clusters using simulated
+    technical replicates. doi: https://doi.org/10.1101/118919
+
 \newpage
 
 #Tutorial
 
 ##Overview
 
-BEARscc relies upon spike-in count measurements in single-cell transcriptome
+BEARscc relies upon spike-in count measurements in single-cell transcriptome 
 experiments to estimate experimental noise and produce simulated technical
 replicates to provide a quantitative understanding of the robustness of
 proposed single cell cluster labels to experimental noise. In principal, 
@@ -84,28 +85,31 @@ library here, which can be easily installed by typing:
 
 Next, BEARscc is equipped with a set of sample data for the purpose
 of testing functions, examples in help files, and this nifty
-tutorial. We can load `data.table` and access the data provided with the package as 
-follows:
+tutorial. We can load `data.table` and access the data provided 
+with the package as follows:
 
-```{r, eval=TRUE}
+```{r load_data, eval=TRUE}
 library('data.table')
 data("BEARscc_examples")
 ```
 
-The loaded file `BEARscc_examples` is equipped with separate `data.frame` objects
-including ERCC spike-in observations (`ERCC.counts.df`), endogenous count observations 
-(`data.counts.df`), and the expected or actual spike-in concentrations.
+The loaded file `BEARscc_examples` is equipped with separate `data.frame` 
+objects including ERCC spike-in observations (`ERCC.counts.df`), 
+endogenous count observations (`data.counts.df`), and the expected or 
+actual spike-in concentrations.
 
-In the event we were working with a seperate set of data, the spike-in concentrations 
-`data.frame` can be computed from the factory concentrations and the relevant dilution 
-protocol utilized in the experiment. Counts tables would need to be mapped and counted 
-with preferred software, and the spike-in control counts (ERCC or otherwise) would need
-to be seperated from the endogenous counts into two distinct `data.frame` objects.
+In the event we were working with a seperate set of data, the spike-in 
+concentrations `data.frame` can be computed from the factory 
+concentrations and the relevant dilution protocol utilized in the experiment. 
+Counts tables would need to be mapped and counted with preferred software, 
+and the spike-in control counts (ERCC or otherwise) would need to be 
+seperated from the endogenous counts into two distinct `data.frame` objects.
 
-For now we can have a look at the first few lines and columns of each of the loaded files:
+For now we can have a look at the first few lines and columns of each 
+of the loaded files:
 
 
-```{r, eval=TRUE}
+```{r display_data, eval=TRUE}
 head(ERCC.counts.df[,1:2])
 
 head(data.counts.df[,1:2]) 
@@ -117,17 +121,19 @@ head(ERCC.meta.df)
 ##Building the noise model
 We will now estimate the single-cell noise present in the experiment using
 spike-in controls. In this tutorial, we rely upon a subsample of artificial
-control data found in `BEARscc_examples`; however, users are encouraged to work 
-through the tutorial with their own single cell data provided some form 
+control data found in `BEARscc_examples`; however, users are encouraged to 
+work through the tutorial with their own single cell data provided some form 
 of spike-ins were included in the experiment. Building the noise models with 
 BEARscc is relatively straightforward with `estimate_noiseparameters()`. We
-simply provide the function with the previously discussed.
-spike-in (ERCCs here) known concentrations, endogenous count measurements, and spike-in 
-counts measurement `data.frame` objects. Although `estimate_noiseparameters()` speed is invariant to 
-data size, it does take a couple of minutes to estimate noise with a reasonably
-granular `alpha_granularity` parameter, so please be patient when running the following code.  
+simply provide the function with the previously discussed 
+spike-in (ERCCs here) known concentrations, endogenous count measurements, 
+and spike-in counts measurement `data.frame` objects. Although 
+`estimate_noiseparameters()` speed is invariant to data size, it does take 
+a couple of minutes to estimate noise with a reasonably granular 
+`alpha_granularity` parameter, so please be patient when running the 
+following code.  
 
-```{r, eval=TRUE}
+```{r estimate_noise, eval=TRUE}
 results <- estimate_noiseparameters(ERCC.counts.df,
                                     data.counts.df,
                                     ERCC.meta.df,
@@ -136,13 +142,13 @@ results <- estimate_noiseparameters(ERCC.counts.df,
                                     model_view=c("Observed","Optimized"))
 ```
 
-Several options exist for `estimate_noiseparameters()`. These are fully documented
-in the help page `?estimate_noiseparameters`. Some of the more important options 
-for the user are listed below
+Several options exist for `estimate_noiseparameters()`. These are 
+fully documented in the help page `?estimate_noiseparameters`. Some of 
+the more important optionsfor the user are listed below
 
 \begin{itemize}
-\item `granularity` determines the number of bins for comparison of the quality 
-    of fit between the mixed-model and observed data for each alpha. 
+\item `granularity` determines the number of bins for comparison of the
+    quality of fit between the mixed-model and observed data for each alpha. 
     This should be set lower for small datasets and higher for 
     datasets with more observations
 \item `write.noise.model=TRUE` outputs two tab-delimited files containing the 
@@ -150,60 +156,146 @@ for the user are listed below
     the noise generation on a seperate high compute node. 
 \item `plot=TRUE` will plot all linear fits and individual ERCCs 
     distributions across samples
-\item `file="./Rplot"` determines the root name for all plots, which write to the 
-    current working directory unless a path is contained in the root name. 
+\item `file="./Rplot"` determines the root name for all plots, which write to 
+    the current working directory unless a path is contained in the root name. 
 \end{itemize}
 
 ## Simulating technical replicates
 
-Following estimation of noise, the parameters computed are then used to generate a 
-    simulate a technical replicate. Here we will simulate replicates on our local computer,
-    but frequently users will want to utilize the methods described in Section 2.4.
+Following estimation of noise, the parameters computed are then used to 
+generate a simulate a technical replicate. Here we will simulate replicates 
+on our local computer, but frequently users will want to utilize the methods 
+described in Section 2.4.
     
-```{r, eval=TRUE} 
+```{r simulate_replicates, eval=TRUE}
     sim_replicates <- create_noiseinjected_counts(results, n=3)
 ```
 
-Recall that `results` is the list object we recently generated with the function 
-    `estimate_noiseparameters()` and note that the variable `n` is the 
-    desired number of simulated technical replicates. The resulting object is a list, 
-    where each element is a simulated technical replicate, and one element is the original 
-    counts matrix. 
+Recall that `results` is the list object we recently generated with the 
+function `estimate_noiseparameters()` and note that the variable `n` is the 
+desired number of simulated technical replicates. The resulting object is
+a list, where each element is a simulated technical replicate, and one 
+element is the original counts matrix. 
 
 
 ## Simulation of replicates for larger datasets
-For larger datasets it is recommended that the user set 
-    `write.noise.model=TRUE` and copy the written bayesian drop-out and 
-    noise estimate files with the observed counts table to a high performance 
-    computing environment. For example, we would run:
+For larger datasets, we set `write.noise.model=TRUE` when running 
+`estimate_noiseparameters()`and copy the written bayesian drop-out and 
+noise estimate files with the observed counts table to a high performance 
+computing environment. The following code provides an example:
     
-```{r, eval=FALSE, include=TRUE}
+```{r estimate_noise_HPC, eval=FALSE, include=TRUE}
 results <- estimate_noiseparameters(ERCC.counts.df,
                                     data.counts.df,
                                     ERCC.meta.df,
                                     granularity=30,
                                     write.noise.model=TRUE,
-                                    file="noise_estimation",
+                                    file="tutorial_example",
                                     model_view=c("Observed","Optimized"))
 ```
 
-Furthermore, the script `HPC_generate_noise_matrices` contains 
-    `create_noiseinjected_counts()` functions that are adapted to a 
-    parallel environment along with suggested code, which is commented 
-    out for user-modification. The script generates seperate noise-injected 
-    counts files, which can be loaded into R as a list or re-clustered 
-    seperately in a high performance compute environment. 
+After running the above code, then within the current working directory 
+(if unsure use `getwd()`), we should find the two tab-delimited files
+that together completely describe the BEARscc noise model. These are the 
+parameters describing the mixed model of technical variation 
+(`tutorial_example_parameters.xls`, see Section 3.1.1) and the parameters 
+describing the drop-out model (`tutorial_example_bayesianestimates.xls`, 
+see Section 3.1.2)
+
+Next we need to provide a copy of the endogenous counts with spike-in
+measurements to BEARscc on the high performance compute cluster. Therefore,
+we take the combine the spike-in and endogenous count `data.frame` objects
+into a single `data.table` and write this structure out as a tab-delimited
+file as follows:
+
+```{r write_data, eval=FALSE, include=TRUE}
+counts.dt<-data.table(rbind(ERCC.counts.df, data.counts.df), 
+    keep.rownames = TRUE)
+write.table(counts.dt, file="counts_example.tsv")
+```
+
+With the original counts file and noise model prepared, we then copy these
+files to our high performance compute cluster. The following code provides
+a sense of how to proceed once these files have been copied to a high
+performance cluster; however, the job submission structure of each user's
+environment will dictate the precise syntax for the following procedure.
+
+The script `HPC_generate_noise_matrices` contains analogous 
+`create_noiseinjected_counts()` functions that are adapted to a 
+parallel environment along with suggested code to call these functions.
+To utilize these functions for simulating technical replicates within a
+parallel environment, please install BEARscc on the relevant cluster. 
+The user should write an R script to load the BEARscc library and
+run the clustering. The following code provides a suggested format for
+both calling the R script with a bash job script and the relevant R 
+invocation of BEARscc and may also be
+found as a stand alone script in `inst/example/HPC_run_example.R`.
+
+Our cluster utilizes a job submission format that interacts seamlessly
+with bash code; therefore, the `$SGE_TASKID` represents an array id for  
+jobs to conveniently generate 100 simulated technical replicates in a
+single job array. In any case, this variable should be treated as the
+index for the simulated technical replicate as we recommend from
+experience that users generate 50 to 100 such simulated technical replicates 
+to reach a stable noise consensus matrix solution. 
+
+The following bash code could be included in one such job script:
+
+```{bash run_sim_rep_HPC, eval=FALSE, include=TRUE}
+Rscript --vanilla HPC_run_example.R $SGE_TASK_ID 
+```
+
+Noting that the file `HPC_run_example.R` contains the following 
+suggested code to run BEARscc:
+
+```{r HPC_example, eval=FALSE, include=TRUE}
+library("data.table")
+library("BEARscc")
+library("parallel")
+
+#### Load data ####
+ITERATION<-commandArgs(trailingOnly=TRUE)[1]
+no_cores<-4
+counts.dt<-fread("counts_example.tsv")
+#filter out zero counts to speed up algorithm
+counts.dt<-counts.dt[rowSums(counts.dt[,.SD>0,.SD=c(2:dim(counts.dt)[2])])>0,]
+probs4detection<-fread("tutorial_example_bayesianestimates.xls")
+parameters<-fread("tutorial_example_parameters4randomize.xls")
+
+#### Simulate replicates ####
+cl <- makeCluster(no_cores, FORK=TRUE)
+counts.error<-prepare_probabilities(counts.dt,
+    probs4detection=probs4detection, parameters=parameters,
+    HPC_genewise_permute_count=HPC_genewise_permute_count,
+    HPC_permute_count=HPC_permute_count, HPC_randomizer=HPC_randomizer,
+    total_sampling=2500)
+counts.error.df<-data.frame(t(counts.error), row.names=counts.dt$GENE_ID)
+counts.error.dt<-data.table(counts.error.df, keep.rownames=TRUE)
+colnames(counts.error.dt)<-colnames(counts.dt)
+write.table(counts.error.dt, file=paste("simulated_replicates/",
+    paste(ITERATION,"sim_replicate_counts.txt",sep="_"),
+    sep=""), quote =FALSE, row.names=FALSE)
+stopCluster(cl)
+```
+
+The script generates seperate simulated technical replicate files, 
+which can be loaded into R as a list for clustering or, in the case of more 
+computationally intense clustering algorithms, re-clustered 
+individually in a high performance compute environment. 
 
 ## Forming a noise consensus
-After generating noise-injected counts tables, these should be re-clustered 
+After generating simulated technical replicates, these should be re-clustered 
     using the clustering method applied to the original dataset. 
     For simplicity, here we use hierarchical clustering on a euclidean 
     distance metric to identify two clusters. In our experience, 
     some published clustering algorithms are sensitive to cell order, 
     so we suggest scrambling the order of cells for each noise iteration 
-    as we do below in the function, `recluster()`.  
+    as we do below in the function, `recluster()`. The function below will
+    serve our purposes for this tutorial, but BEARscc may be used with 
+    any clustering algorithm (e.g. SC3, RaceID2, or BackSPIN). 
 
-To quickly recluster a list, we define a reclustering function:
+To quickly recluster a list of simulated technical replicates, we define a 
+reclustering function:
 
 ```R
 recluster <- function(x) {
@@ -216,7 +308,7 @@ recluster <- function(x) {
 }
 ``` 
 
-We then apply the function `recluster()` to all noise-injected counts matrices 
+We then apply the function `recluster()` to all simulated technical replicates 
 and the original counts matrix and manipulate the list into a `data.frame`. 
 
 ```R
@@ -296,7 +388,7 @@ An example of the resulting plot for 3 noise-injected perturbations is
     It is evident from the plot that one cluster is optimal and outperforms 
     the original clustering which bifurcated this set of purely technical 
     data into 2 clusters.
-    
+
 ### Using BEARscc to inform cluster number, $k$, choice
 While BEARscc certainly does not claim to provide a definitive solution to the 
 question concerning the number of clusters, we provide what we believe to be
@@ -319,107 +411,257 @@ These results can be plotted to visualize cells in the context of
 
 \newpage
 # Algorithm and theory
-In order to simulate technical replicates, BEARscc first builds a statistical model of expression variance and drop-out frequency, which is dependent only on observed gene expression. The parameters of this model are estimated from spike-in counts.  Expression-dependent variance is approximated by fitting read counts of each spike-in transcript across cells to a mixture model comprised of a Poisson and negative binomial distribution (Section 3.1.1). The drop-out model (Section 3.1.2) in BEARscc has two distinct parts: the \emph{drop-out injection distribution} models the likelihood that a given transcript concentration will result in a drop-out, and the \emph{drop-out recovery distribution} models the likelihood that an observed drop-out resulted from a given transcript concentration. The drop-out injection distribution is taken to be the observed drop-out rate in spike-in controls as a function of actual spike-in transcript concentration. This distribution is then used to estimate the drop-out recovery distribution density via Bayes'  theorem and a an empirically informed set of priors and assumptions. Briefly, BEARscc utilizes the drop-out injection distribution and the number of observed zeroes for each endogenous gene to infer a gene-specific probability distribution describing the likelihood that an observed drop-out should in fact have been some non-zero value, given the drop-out rate of the endogenous gene. This entire process is facilitated by the function, `estimate_noiseparameters()`.
+In order to simulate technical replicates, BEARscc first builds a statistical 
+model of expression variance and drop-out frequency, which is dependent only 
+on observed gene expression. The parameters of this model are estimated from 
+spike-in counts.  Expression-dependent variance is approximated by fitting 
+read counts of each spike-in transcript across cells to a mixture model 
+comprised of a Poisson and negative binomial distribution (Section 3.1.1). 
+The drop-out model (Section 3.1.2) in BEARscc has two distinct parts: 
+the \emph{drop-out injection distribution} models the likelihood that a 
+given transcript concentration will result in a drop-out, and the 
+\emph{drop-out recovery distribution} models the likelihood that an observed 
+drop-out resulted from a given transcript concentration. The drop-out 
+injection distribution is taken to be the observed drop-out rate in spike-in 
+controls as a function of actual spike-in transcript concentration. 
+This distribution is then used to estimate the drop-out recovery distribution 
+density via Bayes'  theorem and a an empirically informed set of priors and 
+assumptions. Briefly, BEARscc utilizes the drop-out injection distribution 
+and the number of observed zeroes for each endogenous gene to infer a 
+gene-specific probability distribution describing the likelihood that an 
+observed drop-out should in fact have been some non-zero value, given 
+the drop-out rate of the endogenous gene. This entire process is facilitated 
+by the function, `estimate_noiseparameters()`.
 
-In the second step, BEARscc generates simulated technical replicates by applying the models described in the first step (Section 3.2). For every observed count in the range of values where drop-outs occurred amongst the spike-in transcripts, BEARscc uses the drop-out injection distribution from Step 1 to determine whether to convert the count to zero.  For observations where the count is zero, the drop-out recovery distribution is used to estimate a new value, given the overall drop-out frequency for the gene (Section 3.2). Next, BEARscc substitutes all values larger than zero with a value generated from the derived model of expression variability, parameterized to the observed count for that gene. This procedure can then be repeated any number of times to generate a collection of simulated technical replicates. This step is carried out by `create_noiseinjected_counts()`.
+In the second step, BEARscc generates simulated technical replicates by 
+applying the models described in the first step (Section 3.2). For every 
+observed count in the range of values where drop-outs occurred amongst the 
+spike-in transcripts, BEARscc uses the drop-out injection distribution from 
+Step 1 to determine whether to convert the count to zero.  For observations 
+where the count is zero, the drop-out recovery distribution is used to 
+estimate a new value, given the overall drop-out frequency for the gene 
+(Section 3.2). Next, BEARscc substitutes all values larger than zero with a 
+value generated from the derived model of expression variability, 
+parameterized to the observed count for that gene. This procedure can then be 
+repeated any number of times to generate a collection of simulated technical 
+replicates. This step is carried out by `create_noiseinjected_counts()`.
 
-In the third step, the simulated technical replicates are then re-clustered, using exactly the same method as for the observed data; this re-clustering for each simulated technical replicate is described as an \emph{association matrix} where each element indicates whether two cells share a cluster identity (1) or cluster apart from each other (0). The association matrices for each simulated technical replicate are averaged to form a noise consensus matrix that can be easily interpreted (Section 3.3). This is accomplished with the function `compute_consensus()`. Each element of the noise consensus matrix represents the fraction of simulated technical replicates that, upon applying the clustering method of choice, resulted in two cells clustering together (the \emph{association frequency}). Then, the functions `report_cell_metrics()` and `report_cluster_metrics()` may be used to explore and quantitate the noise consensus matrix at the cell sample and cluster levels, respectively. 
+In the third step, the simulated technical replicates are then re-clustered, 
+using exactly the same method as for the observed data; this re-clustering 
+for each simulated technical replicate is described as an 
+\emph{association matrix} where each element indicates whether two cells 
+share a cluster identity (1) or cluster apart from each other (0). 
+The association matrices for each simulated technical replicate are averaged 
+to form a noise consensus matrix that can be easily interpreted (Section 3.3).
+This is accomplished with the function `compute_consensus()`. Each element of 
+the noise consensus matrix represents the fraction of simulated technical 
+replicates that, upon applying the clustering method of choice, resulted in 
+two cells clustering together (the \emph{association frequency}). Then, the 
+functions `report_cell_metrics()` and `report_cluster_metrics()` may be used 
+to explore and quantitate the noise consensus matrix at the cell sample 
+and cluster levels, respectively. 
 
 ##Noise estimation
-As mentioned previously, BEARscc uses spike-ins to estimate the noise of the experiment for the purpose of producing simulated technical replicates. BEARscc models overall technical variation with a mixture-model (Section 3.1.1) and inferred drop-out effects (Section 3.1.2) independently using the spike-in observations. However, a single function in BEARscc `estimate_noiseparameters()` accomplishes this task.  
+As mentioned previously, BEARscc uses spike-ins to estimate the noise of the 
+experiment for the purpose of producing simulated technical replicates. 
+BEARscc models overall technical variation with a mixture-model 
+(Section 3.1.1) and inferred drop-out effects (Section 3.1.2) independently 
+using the spike-in observations. However, a single function in 
+BEARscc `estimate_noiseparameters()` accomplishes this task.  
 
 ###Estimating transcript variation
-Technical variance is modeled in BEARsccby fitting a single parameter mixture model, $Z(c)$, to the spike-ins' observed count distributions. The noise model is fit independently for each spike-in transcript and subsequently regressed onto spike-in mean expression to define a generalized noise model. This is accomplished in three steps: 
+Technical variance is modeled in BEARsccby fitting a single parameter 
+mixture model, $Z(c)$, to the spike-ins' observed count distributions. 
+The noise model is fit independently for each spike-in transcript and 
+subsequently regressed onto spike-in mean expression to define a 
+generalized noise model. This is accomplished in three steps: 
 
 \begin{enumerate}
-	\item Define a mixture model composed of \emph{poisson} and \emph{negative binomial} random variables: 
-		\begin{equation}
-			Z \sim (1-\alpha)*Pois(\mu)+\alpha*NBin(\mu,\sigma)
-		\label{eq:mixture_model}\end{equation}
-	\item Empirically fit the parameter, $\alpha_{i}$, in a spike-in specific mixture-model, $Z_{i}$, to the observed distribution of counts for each ERCC spike-in transcript, $i$, where $\mu_i$ and $\sigma_i$ are the observed mean and variance of the given spike-in. The parameter, $\alpha_{i}$, is chosen such that the error between the observed and mixture-model is minimized.
-	\item  Generalize the mixture-model by regressing $\alpha_{i}$  parameters and the observed variance, $\sigma_i$, onto the observed spike-in mean expression, $\mu_i$. Thus the mixture model describing the noise observed in ERCC transcripts is defined solely by $\mu$, which is treated as the count transformation parameter, $c$, in the generation of simulated technical replicates . 
+    \item Define a mixture model composed of \emph{poisson} and 
+\emph{negative binomial} random variables: 
+        \begin{equation}
+            Z \sim (1-\alpha)*Pois(\mu)+\alpha*NBin(\mu,\sigma)
+        \label{eq:mixture_model}\end{equation}
+    \item Empirically fit the parameter, $\alpha_{i}$, in a spike-in specific 
+mixture-model, $Z_{i}$, to the observed distribution of counts for each ERCC 
+spike-in transcript, $i$, where $\mu_i$ and $\sigma_i$ are the observed mean 
+and variance of the given spike-in. The parameter, $\alpha_{i}$, is chosen 
+such that the error between the observed and mixture-model is minimized.
+    \item  Generalize the mixture-model by regressing $\alpha_{i}$ parameters
+and the observed variance, $\sigma_i$, onto the observed spike-in mean 
+expression, $\mu_i$. Thus the mixture model describing the noise observed 
+in ERCC transcripts is defined solely by $\mu$, which is treated as the 
+count transformation parameter, $c$, in the generation of simulated 
+technical replicates. 
 \end{enumerate}
 
-In step 2, a mixture model distribution is defined for each spike-in, $i$: $Z_{i}(\alpha_{i},\mu_{i},\sigma_{i})\sim (1-\alpha_{i})*Pois(\mu_i )+\alpha_{i}*NBin(\mu_i,\sigma_i )$. The distribution, $Z_i$, is fit to the observed counts of the respective spike-in, where $\alpha_i$ is an empirically fitted parameter, such that the $\alpha_i$ minimizes the difference between the observed count distribution of the spike-in and the respective fitted model, $Z_i$. Specifically, for each spike-in transcript, $\mu_i$ and $\sigma_i$  are taken to be the mean and standard deviation, respectively, of the observed counts for spike-in transcript, $i$. Then, $\alpha_i$ is computed by empirical parameter optimization; $\alpha_i$ is taken to be the $\alpha_{i,j}$ in the mixture-model, $Z_{i,j}(\alpha_{i,j},\mu_i,\sigma_i)\sim (1-\alpha_{i,j})*Pois(\mu_i )+\alpha_{i,j}*NBin(\mu_i,\sigma_i )$, found to have the least absolute total difference between the observed count density and the density of the fitted model, $Z_i$. In the case of ties, the minimum $\alpha_{i,j}$ is chosen.
+In step 2, a mixture model distribution is defined for each spike-in, $i$:
+\begin{equation}
+    Z_{i}(\alpha_{i},\mu_{i},\sigma_{i})\sim (1-\alpha_{i})*Pois(\mu_i )+
+\alpha_{i}*NBin(\mu_i,\sigma_i ).
+\end{equation}
+The distribution, $Z_i$, is fit to the observed counts of the respective 
+spike-in, where $\alpha_i$ is an empirically fitted parameter, such that 
+the $\alpha_i$ minimizes the difference between the observed count 
+distribution of the spike-in and the respective fitted model, $Z_i$. 
+Specifically, for each spike-in transcript, $\mu_i$ and $\sigma_i$ 
+are taken to be the mean and standard deviation, respectively, of the 
+observed counts for spike-in transcript, $i$. Then, $\alpha_i$ is computed 
+by empirical parameter optimization; $\alpha_i$ is taken to be the 
+$\alpha_{i,j}$ in the mixture-model, 
+\begin{equation}
+    Z_{i,j}(\alpha_{i,j},\mu_i,\sigma_i)\sim (1-\alpha_{i,j})*
+    Pois(\mu_i )+\alpha_{i,j}*NBin(\mu_i,\sigma_i ),
+\end{equation}
+found to have the least absolute total difference between the observed count 
+density and the density of the fitted model, $Z_i$. In the case of ties, the 
+minimum $\alpha_{i,j}$ is chosen.
 
-In step 3, $\alpha(c)$ is then defined with a linear fit, $\alpha_i=\alpha*log2(\mu_i)+b$. $\sigma(c)$  was similarly defined, $log2(\sigma_i) = \alpha*log2(\mu_i)+b$. In this way, the observed distribution of counts in spike-in transcripts defines the single parameter mixture-model, $Z(c)$, used to transform counts during generation of simulated technical replicates:
+In step 3, $\alpha(c)$ is then defined with a linear fit, 
+$\alpha_i=\alpha*log2(\mu_i)+b$. $\sigma(c)$  was similarly defined, 
+$log2(\sigma_i) = \alpha*log2(\mu_i)+b$. In this way, the observed 
+distribution of counts in spike-in transcripts defines the single 
+parameter mixture-model, $Z(c)$, used to transform counts during 
+generation of simulated technical replicates:
 
 \begin{equation}
-			Z(c) \sim (1-\alpha(c))*Pois(c)+\alpha(c)*NBin(c,\sigma(c))
+    Z(c) \sim (1-\alpha(c))*Pois(c)+\alpha(c)*NBin(c,\sigma(c))
 \label{eq:noisefunction}\end{equation}
 
 
-During technical replicate simulation, the parameter $c$ is set to the observed count value, $a$, and the transformed count in the simulated replicate was determined by sampling a single value from $Z(c=a)$. 
+During technical replicate simulation, the parameter $c$ is set to the 
+observed count value, $a$, and the transformed count in the simulated 
+replicate was determined by sampling a single value from $Z(c=a)$. 
 
 
 ###Defining the drop-out models
-A model of the drop-outs is developed by BEARscc in order to inform the permutation of zeros during noise injection. The observed zeros in spike-in transcripts as a function of actual transcript concentration and Bayes' theorem are used to define two models: the \emph{drop-out injection distribution} and the \emph{drop-out recovery distribution}. 
+A model of the drop-outs is developed by BEARscc in order to inform the 
+permutation of zeros during noise injection. The observed zeros in spike-in 
+transcripts as a function of actual transcript concentration and Bayes' 
+theorem are used to define two models: the 
+\emph{drop-out injection distribution} and the 
+\emph{drop-out recovery distribution}. 
 
-The drop-out injection distribution is described by  $Prob(X=0 | Y=y)$, where $X$ is the distribution of observed counts and $Y$ is the distribution of actual transcript counts; the density is computed by regressing the fraction of zeros observed in each sample, $D_i$, for a given spike-in, $i$, onto the expected number spike-in molecules in the sample, $y_i$, e.g. $D=a*y+b$. Then, $D$ describes the density of zero-observations conditioned on actual transcript number, $y$, or $Prob(X=0 | Y=y)$. Notably, each gene was treated with an identical density distribution for drop-out injection.
+The drop-out injection distribution is described by  $Prob(X=0 | Y=y)$, 
+where $X$ is the distribution of observed counts and $Y$ is the distribution 
+of actual transcript counts; the density is computed by regressing the 
+fraction of zeros observed in each sample, $D_i$, for a given spike-in, $i$, 
+onto the expected number spike-in molecules in the sample, $y_i$, 
+e.g. $D=a*y+b$. Then, $D$ describes the density of zero-observations 
+conditioned on actual transcript number, $y$, or $Prob(X=0 | Y=y)$. 
+Notably, each gene was treated with an identical density distribution 
+for drop-out injection.
 
-In contrast, the density of the drop-out recovery distribution, $Prob(Y_j=y | X_j=0)$, is specific to each gene, $j$, where $X_j$ is the distribution of the observed counts and $Y_j$ is the distribution of actual transcript counts for a given gene. The gene-specific drop-out recovery distribution is inferred from drop-out injection distribution using Bayes' theorem and a prior.  This is accomplished in 3 steps:
+In contrast, the density of the drop-out recovery distribution, 
+$Prob(Y_j=y | X_j=0)$, is specific to each gene, $j$, where $X_j$ is the 
+distribution of the observed counts and $Y_j$ is the distribution of actual 
+transcript counts for a given gene. The gene-specific drop-out recovery 
+distribution is inferred from drop-out injection distribution using Bayes' 
+theorem and a prior.  This is accomplished in 3 steps:
 
 \begin{enumerate}
-	\item For the purpose of applying Bayes' theorem, the gene-specific distribution, $Prob(X_j=0 | Y_j=y)$, is taken to be the the drop-out injection density for all genes, $j$. 
-	\item The probability that a specific transcript count is present in the sample, $Prob(Y_j=y)$, is a necessary, but empirically unknowable prior. Therefore, the prior was defined using the law of total probability, an assumption of uniformity, and the probability that a zero was observed in a given gene, $Prob(X_j=0)$. The probability, $Prob(X_j=0)$, is taken to be the fraction of observations that are zero for a given gene. BEARscc does this in order to better inform the density estimation of the gene-specific drop-out recovery distribution.
-	\item The drop-out recovery distribution density is then computed by applying Bayes' theorem:
-
-		\begin{equation}
-			Prob(Y_j=y | X_j=0)=\frac{Prob(X_j=0 | Y_j=y)*Prob(Y_j=y)}{Prob(X_j=0)},
-		\label{eq:bayesianeq}\end{equation}
-	
-\end{enumerate}
-	
-In the second step, the law of total probability, an assumption of uniformity, and the fraction of zero observations in a given gene are leveraged to define the prior, $Prob(Y_j=y)$. First, a threshold of expected number of transcripts, $k$ in $Y$, is chosen such that $k$ was the maximum value for which the drop-out injection density was non-zero. Next, uniformity is assumed for all expected number of transcript values, $y$ greater than zero and less than or equal to $k$; that is $Prob(Y_j=y)$ is defined to be some constant probability, $n$. Furthermore, $Prob(Y_j=y)$ is defined to be 0 for all $y>k$. In order to inform $Prob(Y_j=y)$ empirically, $Prob(Y_j=0)$ and $n$ are derived by imposing the law of total probability (Equation \ref{eq:totalprob}) and unity (Equation \ref{eq:unity}) yielding a system of equations:
+    \item For the purpose of applying Bayes' theorem, the gene-specific 
+distribution, $Prob(X_j=0 | Y_j=y)$, is taken to be the the drop-out 
+injection density for all genes, $j$. 
+    \item The probability that a specific transcript count is present 
+in the sample, $Prob(Y_j=y)$, is a necessary, but empirically unknowable
+prior. Therefore, the prior was defined using the law of total probability, 
+an assumption of uniformity, and the probability that a zero was observed 
+in a given gene, $Prob(X_j=0)$. The probability, $Prob(X_j=0)$, is taken to 
+be the fraction of observations that are zero for a given gene. BEARscc does 
+this in order to better inform the density estimation of the gene-specific 
+drop-out recovery distribution.
+    \item The drop-out recovery distribution density is then computed 
+by applying Bayes' theorem:
 
 \begin{equation}
-Prob(X_j=0)=\Sigma_{y=0}^{k-1}{ (Prob(X_j=0 | Y_j=y)*Prob(Y_j=y))} 
+    Prob(Y_j=y | X_j=0)=\frac{Prob(X_j=0 | Y_j=y)*Prob(Y_j=y)}{Prob(X_j=0)},
+\label{eq:bayesianeq}\end{equation}
+
+\end{enumerate}
+
+In the second step, the law of total probability, an assumption of uniformity, 
+and the fraction of zero observations in a given gene are leveraged to define 
+the prior, $Prob(Y_j=y)$. First, a threshold of expected number of 
+transcripts, $k$ in $Y$, is chosen such that $k$ was the maximum value for 
+which the drop-out injection density was non-zero. Next, uniformity is 
+assumed for all expected number of transcript values, $y$ greater than zero 
+and less than or equal to $k$; that is $Prob(Y_j=y)$ is defined to be some 
+constant probability, $n$. Furthermore, $Prob(Y_j=y)$ is defined to be 0 for 
+all $y>k$. In order to inform $Prob(Y_j=y)$ empirically, $Prob(Y_j=0)$ and 
+$n$ are derived by imposing the law of total probability 
+(Equation \ref{eq:totalprob}) and unity (Equation \ref{eq:unity}) 
+yielding a system of equations:
+
+\begin{equation}
+    Prob(X_j=0)=\Sigma_{y=0}^{k-1}{ (Prob(X_j=0 | Y_j=y)*Prob(Y_j=y))} 
 \label{eq:totalprob}\end{equation}
 
 \begin{equation}
-\Sigma_{y=0}^{k-1}{ Prob(Y_j=y)}=Prob(Y_j=0)+(k-1)*{n}=1  
+    \Sigma_{y=0}^{k-1}{ Prob(Y_j=y)}=Prob(Y_j=0)+(k-1)*{n}=1  
 \label{eq:unity}\end{equation}
 
-The probability that a zero is observed given there are no transcripts in the sample, $Prob(X_j=0 | Y_j=0)$, is assumed to be 1. With the preceding assumption, solving for $Prob(Y_j=0)$ and $n$ give:
+The probability that a zero is observed given there are no transcripts in 
+the sample, $Prob(X_j=0 | Y_j=0)$, is assumed to be 1. With the preceding 
+assumption, solving for $Prob(Y_j=0)$ and $n$ give:
 
 \begin{equation}
 n=\frac{1-Prob(Y_j=0)}{k-1}
 \label{eq:nsolved}\end{equation}
 
 \begin{equation}
-Prob(Y_j=0)=\frac{Prob(X_j=0)-\frac{1}{k-1}*\Sigma_{y=1}^{k-1}( Prob(X_j=0 | Y_j=y)) }{(1-\frac{1}{k-1}*\Sigma_{y=1}^{k-1} (Prob(X_j=0 | Y_j=y)) }
+Prob(Y_j=0)=\frac{Prob(X_j=0)-\frac{1}{k-1}*
+\Sigma_{y=1}^{k-1}( Prob(X_j=0 | Y_j=y)) }{(1-\frac{1}{k-1}*
+\Sigma_{y=1}^{k-1} (Prob(X_j=0 | Y_j=y)) }
 \label{eq:py0solved}\end{equation} \\
 
-In this way, $Prob(Y_j=0)$ is defined by (Equation \ref{eq:nsolved}) for $y$ in $Y_j$ less than or equal to $k$ and greater than zero, and defined by (Equation \ref{eq:py0solved}) for $y$ in $Y_j$ equal to zero. For $y$ in $Y_j$ greater than $k$, the prior $Prob(Y_j=y)$ is defined to be equal to zero.
+In this way, $Prob(Y_j=0)$ is defined by (Equation \ref{eq:nsolved}) 
+for $y$ in $Y_j$ less than or equal to $k$ and greater than zero, 
+and defined by (Equation \ref{eq:py0solved}) for $y$ in $Y_j$ equal to zero. 
+For $y$ in $Y_j$ greater than $k$, the prior $Prob(Y_j=y)$ is defined to 
+be equal to zero.
 
-In the third step, the previously computed prior, $Prob(Y_j=y)$, the fraction of zero observations in a given gene, $Prob(X_j=0)$, and the drop-out injection distribution, $Prob(X_j=0 | Y_j=y)$, are utilized to estimate, with Bayes's theorem, the density of the drop-out recovery distribution, $Prob(Y_j=y | X_j=0)$. During the generation of simulated technical replicates for zero observations and count observations less than or equal to $k$, values are sampled from the drop-out recovery and injection distributions as described in the pseudocode of the BEARscc algorithm for simulating technical replicates.
+In the third step, the previously computed prior, $Prob(Y_j=y)$, the fraction 
+of zero observations in a given gene, $Prob(X_j=0)$, and the drop-out 
+injection distribution, $Prob(X_j=0 | Y_j=y)$, are utilized to estimate, with 
+Bayes's theorem, the density of the drop-out recovery distribution, 
+$Prob(Y_j=y | X_j=0)$. During the generation of simulated technical replicates 
+for zero observations and count observations less than or equal to $k$, 
+values are sampled from the drop-out recovery and injection distributions as 
+described in the pseudocode of the BEARscc algorithm for 
+simulating technical replicates.
 
 
 ##Simulating technical replicates
-Simulated technical replicates were generated from the noise mixture-model and two drop-out models. For each gene, the count value of each sample is systematically transformed using the mixture-model, $Z(c)$, and the drop-out injection, $Prob(X=0 | Y=y)$, and recovery, $Prob(Y_j=y | X_j=0)$, distributions in order to generate simulated technical replicates as indicated by the following pseudocode:
+Simulated technical replicates were generated from the noise mixture-model and 
+two drop-out models. For each gene, the count value of each sample is 
+systematically transformed using the mixture-model, $Z(c)$, and the 
+drop-out injection, $Prob(X=0 | Y=y)$, and recovery, $Prob(Y_j=y | X_j=0)$, 
+distributions in order to generate simulated technical replicates as indicated 
+by the following pseudocode:
 
 
 ```
 FOR EACH gene, $j$
     FOR EACH count, $c$ 
         IF $c=0$ 
-	          $n \leftarrow SAMPLE$ one count, y, from $Prob(Y_j=y | X_j=0)$
-	          IF $n=0$ 
-	              $c \leftarrow 0$ 
+            $n \leftarrow SAMPLE$ one count, y, from $Prob(Y_j=y | X_j=0)$
+            IF $n=0$ 
+                $c \leftarrow 0$ 
             ELSE
-	              $c \leftarrow SAMPLE$ one count from $Z(n)$
+                $c \leftarrow SAMPLE$ one count from $Z(n)$
             ENDIF
         ELSE
             IF $c\leq k$ 
-		            $dropout \leftarrow TRUE$ with probability, $Prob(X=0 | Y=k)$ 
-	              IF $dropout=TRUE$ 
-                    $c \leftarrow 0$ 	
-	              ELSE 
-	                  $c \leftarrow SAMPLE$ one count from $Z(c)$ 
-	              ENDIF 
-	          ELSE 
-	              $c \leftarrow SAMPLE$ one count from $Z(c)$ 
-	          ENDIF 
+                $dropout \leftarrow TRUE$ with probability, $Prob(X=0 | Y=k)$ 
+                IF $dropout=TRUE$ 
+                    $c \leftarrow 0$ 
+                ELSE 
+                    $c \leftarrow SAMPLE$ one count from $Z(c)$ 
+                ENDIF 
+            ELSE 
+                $c \leftarrow SAMPLE$ one count from $Z(c)$ 
+            ENDIF 
         ENDIF 
         RETURN $c$
     DONE
@@ -467,8 +709,8 @@ estimate_noiseparameters(ERCC.counts.df,
                                     file="noise_estimation",
                                     model_view=c("Observed","Optimized"))
 
-```  
-    
+```
+
 
 ##`create_noiseinjected_counts()`
 ###Description

@@ -37,6 +37,22 @@ intestine, we have demonstrated that BEARscc identified cells that cluster
 consistently, irrespective of technical variation. For more details, see the
 [manuscript on bioRxiv](http://biorxiv.org/content/early/2017/03/21/118919).
 
+Importantly, **BEARscc** should not be considered another clustering algorithm.
+Specifically, this package is designed to supply users with an organic
+tool to evaluate and explore the impact of noise on their single cell 
+cluster interpretations. The package provides users with a way to clarify
+the precision of a single cell experiment with respect to grouping cells
+into clusters that are biologically meaningful. In this way, **BEARscc** 
+allows users to achieve confidence in clusters and relevant cells that 
+consistently cluster together invariant to the noise inherent to a single
+cell experiment. Conversely, the algorithm provides a mechanism to identify
+cells and clusters which cannot be resolved given the precision of the 
+experiment in conjuction with the clustering algorithm of choice. It is 
+our hope that **BEARscc** will enable users to proceed with clusters, or 
+biological groups, in which they are confident are robust to noise and in 
+which they have an intimate understanding of those cells and clusters that
+may be less precisely assigned to the putative biological role. 
+
 
 ##Installation
 It is our hope that BEARscc will shortly be available on Bioconductor. 
@@ -75,13 +91,21 @@ should provide users with a comprehensive tutorial of the use and utlity
 of BEARscc as a tool for vetting single cell clusters with respect to 
 experimental noise. 
 
-Before getting started, we need to sort some data and dependencies.
+Before getting started, we need to sort some data, dependencies, and
+aesthetic packages for the purpose of this document.
 
 First, we are using the excellent
-[`data.table`](https://cran.r-project.org/web/packages/data.table/index.html)
-library here, which can be easily installed by typing:
+[`data.table`](https://cran.r-project.org/web/packages/data.table/index.html),
+[`ggplot2`](https://cran.r-project.org/web/packages/ggplot2/index.html),
+and
+[`cowplot`](https://cran.r-project.org/web/packages/cowplot/index.html) 
+libraries here, which can be easily installed by typing:
 
-`install.packages('data.table')`
+```{r install, eval=FALSE, include=TRUE}
+install.packages('data.table')
+install.packages('ggplot2')
+install.packages('cowplot')
+```
 
 Next, BEARscc is equipped with a set of sample data for the purpose
 of testing functions, examples in help files, and this nifty
@@ -357,13 +381,13 @@ matrices. Promiscuity indicates a tendency for cells in a putative cluster
 to associate with other clusters across noise-injected counts matrices. 
 Score represents the promiscuity substracted from the stability. 
 
-We have found it useful to identify the optimal number of clusters in terms 
+We have found it useful to inform the optimal number of clusters in terms 
 of resiliance to noise by examining these metrics by cutting hierarchical 
 clustering dendograms of the noise consensus and comparing the results to 
 the original clustering labels. To do this create a vector containing 
 each number of clusters one wishes to examine (the function automatically 
 determines the results for the dataset as a single cluster) and then 
-cluster the consensus with `cluster_consensus()`:
+cluster the consensus with various cluster numbers using `cluster_consensus()`:
 
 ```{r cluster_consensus, include=TRUE, eval=TRUE}
 vector <- seq(from=2, to=5, by=1)
@@ -379,37 +403,86 @@ BEARscc_clusts.df <- cbind(BEARscc_clusts.df,
 ```
 
 ### Understanding robustness at the cluster level
-Compute cluster metrics by running the command:
+
+Now we can compute cluster metrics for each of the BEARscc cluster 
+number scenarious and the original clustering; indeed, any cluster labels
+of the users choosing could be supplied to vet with the information provided
+by the noise consensus. We accomplish this by running the command and
+displaying the first 5 rows of the resulting `data.table`:
 
 ```{r compute_cluster_scores, include=TRUE, eval=TRUE}
 cluster_scores.dt <- report_cluster_metrics(BEARscc_clusts.df, 
-    noise_consensus, plot=TRUE, file="example")
+    noise_consensus, plot=FALSE)
+head(cluster_scores.dt, n=5)
 ```
 
-The output is a melted `data.table` that displays the name of each cluster, 
+Above is a melted `data.table` that displays the name of each cluster, 
     the size of each cluster, the metric (score, Promiscuity, Stability), 
     the value of each metric for the respective cluster and clustering, 
     the clustering in question (1,2,...,Original), whether the cluster 
     consists of only one cell, and finally the mean of each metric 
     across all clusters in a clustering.  
 
-An example of the resulting plot for 3 noise-injected perturbations is 
-    provided for the user's reference: 
-    [example/example_cluster_scores.pdf](example/example_cluster_scores.pdf).
-    It is evident from the plot that one cluster is optimal and outperforms 
-    the original clustering which bifurcated this set of purely technical 
-    data into 2 clusters.
+In the previous example, we display all metrics for generating 1
+clusters from the data given the previously computed noise consensus from
+10 simulated technical replicates and the same for the score metric 
+generating 2 clusters from the data. Importantly, by definition, 1 cluster 
+scenarios have a promiscuity value of 0. Observe that the score for the
+cluster in the 1 cluster scenario is much larger than either cluster of the
+2 cluster scenario, and that this is reflected in the average clustering 
+column. 
 
-### Using BEARscc to inform cluster number, $k$, choice
-While BEARscc certainly does not claim to provide a definitive solution to the 
-question concerning the number of clusters, we provide what we believe to be
-a useful perspective on the matter. Specifically, we have found that 
+We can examine the BEARcc metrics for the original cluster using `ggplot2`:
+
+```{r plot_clusterscores_original, include=TRUE, eval=TRUE}
+library("ggplot2")
+library("cowplot")
+ggplot(cluster_scores.dt[Clustering=="Original"][Metric=="score"], 
+    aes(x=`Cluster identity`, y=Value) )+
+    geom_bar(aes(fill=`Cluster identity`), stat="identity")+
+    xlab("Cluster identity")+ylab("Cluster score")+
+    ggtitle("Original cluster scores")+guides(fill=FALSE)
+```
+
+We can see that this initial clustering is terrible, which makes sense given
+the ground truth consists of a single biological entity. The stability and 
+promiscuity metrics bear this out:
+
+```{r plot_clusterstability_original, include=TRUE, eval=TRUE}
+ggplot(cluster_scores.dt[Clustering=="Original"][Metric=="Stability"], 
+    aes(x=`Cluster identity`, y=Value) )+
+    geom_bar(aes(fill=`Cluster identity`), stat="identity")+
+    xlab("Cluster identity")+ylab("Cluster stability")+
+    ggtitle("Original cluster stability")+guides(fill=FALSE)
+```
+
+The high stability exhibited in the example above is not suprising as samples
+in this example should have strong association with one another. However, the
+promuscuity below reveals the reason for the low score:
+
+```{r plot_clusterpromiscuity_original, include=TRUE, eval=TRUE}
+ggplot(cluster_scores.dt[Clustering=="Original"][Metric=="Promiscuity"], 
+    aes(x=`Cluster identity`, y=Value) )+
+    geom_bar(aes(fill=`Cluster identity`), stat="identity")+
+    xlab("Cluster identity")+ylab("Cluster promiscuity")+
+    ggtitle("Original cluster promiscuity")+guides(fill=FALSE)
+```
+
+Despite the high stability, the samples within each cluster have high 
+association with cells in the other cluster, which results in a high
+promiscuity reported from the noise consensus. As a net result, the scores
+in the original 2 cluster case for each cluster are subpar. Again, this
+is consistent with the ground truth of the example data. 
 
 ### Understanding robustness at the sample level
-Likewise, the cell metrics may be computed using:
+Completely analagous to cluster metrics, the extent to which cells belong
+within a given cluster may be evaluated with respect to the noise consensus.
+Below we demonstrate how to compute the cell metrics and display 4 cells for
+illustrative purposes. 
 
 ```{r compute_cell_scores, include=TRUE, eval=TRUE}
 cell_scores.dt <- report_cell_metrics(BEARscc_clusts.df, noise_consensus)
+head(cell_scores.dt, n=4)
 ```
 
 The output is a melted `data.table` that displays the name of each cluster 
@@ -417,8 +490,47 @@ The output is a melted `data.table` that displays the name of each cluster
     the metric (score, Promiscuity, Stability), the value for each metric, 
     and finally the clustering in question (1,2,...,Original).
 
-These results can be plotted to visualize cells in the context of 
-    different clusterings using `ggplot2`.
+As with cluster metrics, these results can be plotted to visualize cells 
+in the context of the original clusters using `ggplot2`. The score metric
+is plotted below to illustrate this:
+
+```{r plot_cellscore_original, include=TRUE, eval=TRUE}
+ggplot(cell_scores.dt[Clustering=="Original"][Metric=="score"], 
+    aes(x=factor(`Cluster identity`), y=Value) )+
+    geom_jitter(aes(color=factor(`Cluster identity`)), stat="identity")+
+    xlab("Cluster identity")+ylab("Cell scores")+
+    ggtitle("Original clustering cell scores")+guides(color=FALSE)
+```
+
+### Using BEARscc to inform cluster number, $k$, choice
+While BEARscc certainly does not claim to provide a definitive solution to the 
+question concerning the number of clusters, we provide what we believe to be
+a useful perspective on the matter. Specifically, we have found that by 
+examining the cluster metrics across various hiearchical clusterings of the
+BEARscc noise consensus, the cluster number $k$ with the highest score tends 
+to provide a number of clusters that resembles ground truth more closely than 
+simple gene sampling or relevant algorithms along as evidenced by experiments 
+in control samples, zebrafish, and murine brain data (see our manuscript on
+[bioRxiv](http://biorxiv.org/content/early/2017/03/21/118919). Importantly,
+this only provides a heuristic for determining cluster number $k$ that 
+takes into count the inherent noise of the single cell experiment, and the 
+heuristic is dependent upon the clustering algorithm of choosing (the better
+the utilized clustering algorithm, the better the BEARscc $k$ heuristic). As
+an illustration of utilizing this heuristic, we plot the average cluster score 
+values for various cluster number scenarios below:
+
+```{r choosing_k, include=TRUE, eval=TRUE}
+ggplot(cluster_scores.dt[Metric=="score"], 
+    aes(x=`Clustering`, y=Value) )+
+    geom_boxplot(aes(fill=`Clustering`))+
+    xlab("Clustering")+ylab("Cluster score distribution")+
+    ggtitle("Original cluster scores for each clustering")+
+    guides(fill=FALSE)
+```
+
+As we can see, the 1 cluster scenario provides the best cluster score
+as determined by the noise consensus. As mentioned previously,
+the single cluster solution resembles the biological ground truth. 
 
 \newpage
 # Algorithm and theory

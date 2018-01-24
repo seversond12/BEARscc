@@ -1,86 +1,49 @@
 #!/usr/bin/env Rscript
 #Author: David T Severson
 #Scope: Simulate replicates on high throughput cluster
-library(data.table, logical.return=TRUE, quietly = TRUE)
-library("parallel",logical.return=TRUE, quietly = TRUE)
+library("data.table", quietly = TRUE)
 
-##cluster number
-cl<-2
-
-##function that permutes counts with technical noise
-HPC_randomizer<-function(x,parameters,total_sampling){
-    NB_intercept<-as.numeric(parameters$alpha2mu.intercept)
-    NB_slope<-as.numeric(parameters$alpha2mu.slope)
-    Mean2SDcor_residual<-as.numeric(parameters$max.res)
-    Mean2SDcor_slope<-as.numeric(parameters$mu2sigma.slope)
-    Mean2SDcor_intercept<-as.numeric(parameters$mu2sigma.intercept)
-    sd_inflate<-as.numeric(parameters$sd.inflate)
-    p<-NB_intercept+NB_slope*log2(x+0.025)
-    if (p<0) {p=0}
-    if (p>1) {p=1}
-    hx1 <- rnbinom(total_sampling*p,size = x^2/((2^(Mean2SDcor_slope*
-        log2(x)+Mean2SDcor_intercept+Mean2SDcor_residual*
-        sd_inflate))^2-x),mu = x)
-    hx2 <- rpois(total_sampling*(1-p),x)
-    sample(append(hx1, hx2), size=1, replace=TRUE)
-}
-
-##The count permuter permutes zeros and also calls randomizer()
-HPC_permute_count<-function(x, probs4detection.k, probabilityA,
-    parameters, gene, HPC_randomizer, total_sampling){
-    force(parameters)
-    if (x==0) {
-        nx<-sample(as.numeric(rownames(probs4detection.k)), 1,
-            prob=probabilityA, replace=TRUE)
-        if (nx>0) {
-            nx<-HPC_randomizer(probs4detection.k[as.character(nx),]$Counts,
-                parameters, total_sampling)
-        }
+HPC_simulate_replicates<-function(counts_matrix, dropout_parameters,
+spikein_parameters, max_cumprob=0.9999){
+    round_counts<-counts<-transcripts<-dropouts_given_transcripts<-dif<-NULL
+    max_cumprob<-1-(1-max_cumprob)/2
+    dropout_recovery.genes<-t(data.frame(dropout_parameters,
+        row.names = "transcripts")[,3:eval(dim(
+        dropout_parameters)[2]-1)])
+    rownames(dropout_recovery.genes)<-gsub("^X([0-9])","\\1",
+        rownames(dropout_recovery.genes))
+    dropout_recovery<-data.table(dropout_parameters[,1:3, with=FALSE])[,
+        round_counts:=round(counts),]
+    dropout_injection<-data.table(dropout_parameters[,1:3, with=FALSE])[,
+        round_counts:=round(counts),][,`:=`(transcripts=transcripts,
+        dropouts_given_transcripts=dropouts_given_transcripts,
+        dif=abs(counts-round_counts), min=min(abs(counts-round_counts))),
+        by=round_counts][dif==min,][,`:=`(transcripts=transcripts, dif=NULL,
+        min=NULL, dropouts_given_transcripts=dropouts_given_transcripts,
+        counts=round_counts, round_counts=NULL)]
+    count_max<-max(dropout_injection$counts)
+    all_counts<-seq(from=1,to=max(dropout_injection$counts), by=1)
+    if (length(all_counts)>(length(dropout_injection$counts)-1)){
+        dropout_injection<-do.call(rbind, lapply(all_counts,
+            `fill_out_count_probability_table`, dropout_injection))
+        dropout_injection<-data.frame(dropout_injection, row.names="counts")
+    } else{
+        dropout_injection<-data.frame(dropout_injection, row.names = "counts")
     }
-    else {
-        if (ceiling(x) < max(as.numeric(rownames(probs4detection.k)))){
-            probabilityB<-as.numeric(
-                probs4detection.k[as.character(ceiling(x)),]$Py0givenk)
-            nx<-sample(c(0,x),1, prob=as.numeric(c(probabilityB,
-                1-probabilityB)))
-                if (nx>0) {
-                    nx<-HPC_randomizer(nx, parameters, total_sampling)
-                }
-        } else {
-            nx<-HPC_randomizer(x, parameters, total_sampling)
-        }
-    }
-    nx
-}
-
-##seperates out genes for analysis
-HPC_genewise_permute_count<-function(x,probs4detection.k,
-    probs4detection.genes, parameters,permute_count, randomizer,
-    total_sampling=2500){
-    gene_name<-NULL
-    print(x[1])
-    print(sub("[-,(,)]",".",x[1]))
-    probabilityA<-probs4detection.genes[gsub("[-,(,)]",".",x[1]),]
-    force(total_sampling)
-    apply(data.frame(as.numeric(x[-1])),1, `HPC_permute_count`,
-        probs4detection.k,probabilityA, parameters,gene=gene_name,
-        HPC_randomizer,total_sampling)
-}
-
-##prepares bayesian file for fast row indexing.
-prepare_probabilities<-function(x,probs4detection, parameters,
-    HPC_genewise_permute_count=HPC_genewise_permute_count,
-    HPC_permute_count=HPC_permute_count, HPC_randomizer=HPC_randomizer,
-    total_sampling=2500){
-    probs4detection.genes<-t(data.frame(probs4detection,
-        row.names = "k")[,4:eval(dim(probs4detection)[2]-1)])
-    rownames(probs4detection.genes)<-gsub("^X([0-9])","\\1",
-        rownames(probs4detection.genes))
-    probs4detection.k<-data.frame(probs4detection[,2:4,
-        with=FALSE],row.names = "k")
-    x[,parApply(cl,.SD, 1 ,`HPC_genewise_permute_count`,
-        probs4detection.k=probs4detection.k,
-        probs4detection.genes=probs4detection.genes,
-        total_sampling=total_sampling, HPC_permute_count=HPC_permute_count,
-        HPC_randomizer=HPC_randomizer, parameters=parameters)]
+    noisy_counts<-t(counts_matrix)
+    noisy_counts.zeros<-noisy_counts[,colSums(noisy_counts==0)>0]
+    noisy_counts.nozeros<-noisy_counts[,colSums(noisy_counts==0)==0]
+    indropout_range<-which(noisy_counts<=count_max & noisy_counts>0)
+    dropouts<-sapply(noisy_counts[indropout_range],
+        `permute_count_in_dropout_range`, dropout_injection)
+    t_counts<-rbind(colnames(noisy_counts.zeros), noisy_counts.zeros)
+    noisy_counts.zeros<-data.table(t_counts)[,sapply(.SD,
+        `genewise_dropouts`, dropout_recovery=dropout_recovery,
+        dropout_recovery.genes=dropout_recovery.genes)]
+    noisy_counts<-cbind(noisy_counts.zeros, noisy_counts.nozeros)[
+        rownames(noisy_counts), colnames(noisy_counts)]
+    noisy_counts[indropout_range]<-dropouts
+    noisy_counts[noisy_counts>0]<-sapply(noisy_counts[noisy_counts>0],
+        `randomizer`, parameters=spikein_parameters, max_cumprob=max_cumprob)
+    t(noisy_counts)
 }

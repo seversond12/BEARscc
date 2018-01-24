@@ -7,393 +7,499 @@
 ################### INTERNAL FUNCTIONS #######################################
 
 
-##change to datatable, annotate with actual transcript count and 
-    ##optionally normalize by sequencing depth
-prepare_data<-function(x,y){
-    x$transcripts<-y[rownames(x),1]
-    x
+#annotate spike-in counts with actual transcript counts
+prepare_data<-function(spike_counts.df,spike_conc.df){
+    spike_counts.df$transcripts<-spike_conc.df[rownames(spike_counts.df),1]
+    spike_counts.df
 }
 
+#melt and format spike-in counts
+melt_spikeins<-function(prepared_spikeins){
+    value<-V1<-NULL
+    melted_spikeins.dt<-melt(data.table(prepared_spikeins,
+        keep.rownames = TRUE), id.vars = c("rn", "transcripts"))
+    detected_spikeins.dt<-melted_spikeins.dt[,mean(value)>0, by="rn"]
+    setkey(detected_spikeins.dt, "rn")
+    setkey(melted_spikeins.dt,"rn")
+    melted_spikeins.dt<-detected_spikeins.dt[melted_spikeins.dt,
+        ][V1==TRUE,][,-2,with=FALSE]
+    colnames(melted_spikeins.dt)<-c("spike-in", "transcripts" , "sample",
+        "counts")
+    melted_spikeins.dt
+}
 
-##computes linear fit for mean to standard deviation across ERCCs in the data
-##x is prepared dataframe with cells as columns and ERCC ids as rows,
-    ##each element is an observed unnormalized count
-estimate_mu2sigma<-function(x, plot,sd_inflate, file="Rplot"){
-    ##Correlate mean to standard deviation, 
-        ##so that negative binomial is a function of mean
+#plot mean to std dev correlation
+plot_mu2sigma<-function(spikein_stats.dt, mu2sigma.fit, file, sd_inflate){
     V1<-NULL
-    value<-NULL
-    x1<-melt(data.table(x, keep.rownames = TRUE),
-        id.vars = c("rn", "transcripts"))
-    ERCC.sd<-data.table(x1[,sd(value),by=c("rn", "transcripts")])
-    ERCC.sd$mean<-x1[,mean(value),by=c("rn", "transcripts")]$V1
-    ERCC.sd[ERCC.sd$V1==0]$V1<-NA
-    ERCC.sd[ERCC.sd$V1==0]$mean<-NA
-    mu2sigma.fit<-lm(log2(ERCC.sd$V1)~log2(ERCC.sd$mean))
-##Read correlation paramaters into data.frame
-    mu2sigma<-data.frame(mu2sigma.slope=coef(mu2sigma.fit)[2], 
-        mu2sigma.intercept<-coef(mu2sigma.fit)[1], 
+    g<-ggplot(data=spikein_stats.dt,aes(x=log2(mean), y=log2(V1)))+
+        geom_point()+xlab("\nMean spike-in expression / log2")+
+        geom_abline(slope = coef(mu2sigma.fit)[2],
+        intercept = coef(mu2sigma.fit)[1])+
+        ylab("Standard deviation of spike-in expression / log2\n")+
+    ggtitle("Relationship between standard deviation
+        and mean of spike in measurements\n")+
+    geom_abline(slope=coef(mu2sigma.fit)[2],color="red",
+        intercept=coef(mu2sigma.fit)[1]+
+        sd_inflate*max(mu2sigma.fit$residuals))
+   ggsave(paste(file,"mu2sigma.pdf", sep="_"), plot=g, device="pdf",
+         width=8, height=6, units = "in")
+}
+
+#estimate mean to std dev correlation by linear regression
+estimate_mu2sigma<-function(melted_spikeins.dt, plot, sd_inflate, file=file){
+    V1<-value<-counts<-NULL
+    spikein_stats.dt<-melted_spikeins.dt[,sd(counts), by=c("spike-in",
+        "transcripts")]
+    spikein_stats.dt$mean<-melted_spikeins.dt[,mean(counts),
+        by=c("spike-in", "transcripts")]$V1
+    mu2sigma.fit<-lm(log2(spikein_stats.dt$V1)~log2(spikein_stats.dt$mean))
+    mu2sigma<-data.frame(mu2sigma.slope=coef(mu2sigma.fit)[2],
+        mu2sigma.intercept=coef(mu2sigma.fit)[1],
         max.res=max(mu2sigma.fit$residuals))
     if (plot==TRUE){
-        g<-ggplot(data=ERCC.sd,aes(x=log2(mean), y=log2(V1)))+geom_point()+
-            geom_abline(slope = coef(mu2sigma.fit)[2],
-            intercept = coef(mu2sigma.fit)[1])+
-            xlab("\nMean ERCC expression / log2")+
-            ylab("Standard deviation of ERCC expression / log2\n")+
-            ggtitle("Relationship between standard deviation 
-            and mean of ERCC spike in measurements\n")+
-            geom_abline(slope=coef(mu2sigma.fit)[2],color="red", 
-            intercept=coef(mu2sigma.fit)[1]+
-            sd_inflate*max(mu2sigma.fit$residuals))
-        ggsave(paste(file,"mu2sigma.pdf", sep="_"), plot=g, device="pdf",
-        iwidth=10.5, height=7.5, units = "in")
+        plot_mu2sigma(spikein_stats.dt, mu2sigma.fit, file=file,
+            sd_inflate=sd_inflate)
     }
     mu2sigma
 }
 
-
-##function that computes linear fit parameters in order to model 
-    ##ERCC dispersion as proxy for technical noise in the dataset
-##x is a dataframe with cells as columns and ERCC ids as rows, 
-    ##each element is an observed unnormalized count
-##y is a dataframe with ERCC ids as rownames and the 1st column 
-    ##is the number of transcripts spiked into the sample
-##granularity is the number of bins to divide the distributions 
-    ##into in order to determine maximal alpha
-compute_alpha<-function(x,estimate_mu2sigma,sd_inflate,plot,granularity, file,
-    alpha_granularity=alpha_granularity){
-    transcripts<-NULL
-    value<-NULL
-    rn<-NULL
-    Mean<-NULL
-    r.value<-NULL
-    p.nbinom<-NULL
-    mu2sigma<-estimate_mu2sigma(x, plot,sd_inflate, file=file)
-    x1<-melt(data.table(x, keep.rownames = TRUE), 
-        id.vars = c("rn", "transcripts"))
-if (plot==TRUE){
-    testing<-melt(data.table(x, keep.rownames = TRUE)[,-1, with=FALSE],
-        id.vars = c("transcripts"))
-    g<-ggplot(data=testing[transcripts>=1,], 
+#plot actual spike-in transcript number vs observed spike-in counts
+plot_obs2actual<-function(melted_spikeins.dt, file){
+    transcripts<-counts<-NULL
+    g<-ggplot(data=melted_spikeins.dt[transcripts>0,],
         aes(x=factor(round(log10(transcripts+0.25), digits=3)),
-        y=log2(value+0.25)))+geom_violin(scale = "width")+
-        xlab("\nERCC molecules per cell / log10")+
-        ylab("Measured counts / log2\n")+
-        ggtitle("The count measurement distribution as a 
+        y=log2(counts+0.25)))+geom_violin(scale = "width")+
+    xlab("\nSpike-in molecules per cell / log10")+
+    ylab("Measured counts / log2\n")+
+    ggtitle("The count measurement distribution as a
         function of actual transcript number.\n")
-    ggsave(paste(file,"countsdistribution_vs_moleculespercell.pdf", sep="_"),
-        plot=g, device="pdf", width=10.5, height=7.5, units = "in")
+    ggsave(paste(file,"_countsdistribution_vs_moleculespercell.pdf", sep="_"),
+        plot=g, device="pdf", width=8, height=6, units = "in")
 }
-    y<-data.table(x1, key="rn")[,mean(value), by=c("rn", "transcripts")]
-    setkey(x1, rn)
-    colnames(y)<-c("rn","transcripts","Mean")
-    y<-y[Mean>0,]
-    ERCCnames<-as.character(y$rn)
-    setkey(y, "rn")
-    z2<-data.frame(as.character("DUMMY"), 1, 1, 1, 1)
-    colnames(z2)<-c("rn","Mean", "p.nbinom","p.poisson","r.value")
-    for (j in seq(from=0, to=1, by=alpha_granularity)){
-        if (j %in% seq(from=0, to=1, by=0.05)){
-            print(paste("Estimating error for ERCCs with alpha = ", j,sep=""))
-        }
-        k=1-j
-        y3<-data.frame(as.character("DUMMY"), 1, 1, 1, 1)
-        colnames(y3)<-c("rn","Mean", "p.nbinom","p.poisson","r.value")
-        for (i in ERCCnames){
-            x2<-x1[rn==i]
-            p<-dim(x1[rn==i])[1]
-            y.name<-as.character(y[rn==i]$rn)
-            y.mean<-y[rn==i]$Mean
-            hx1 <- rnbinom(p*j,size = mean(x2$value)^2/((2^(mu2sigma[1,1]*
-                log2(mean(x2$value))+mu2sigma[1,2]+mu2sigma[1,3]))^2-
-                mean(x2$value)),mu = mean(x2$value))
-            hx2 <- rpois(p*k,mean(x2$value))
-            if (j==0){
-                hx.mixed<-hx2
-            }else if (j==1){
-                hx.mixed <- hx1
-            }else {
-                hx.mixed<-append(hx1, hx2)
-            }
-            brakes<-seq(from=0,to=max(hx.mixed, x2$value)+
-                max(hx.mixed, x2$value)/granularity, by=max(hx.mixed, 
-                x2$value)/granularity)
-            h1<-hist(x2$value, plot = FALSE, breaks =brakes)
-            h.mixed<-hist(hx.mixed,plot = FALSE, breaks = brakes)
-            rvalue<-sum(abs(h.mixed$counts-h1$counts)/(2*p))
-            y2<-data.frame(rn=y.name,Mean=y.mean,p.nbinom=j,
-                p.poisson=k,r.value=rvalue)
-            y4<-rbind(y3,y2)
-            y3<-y4
-        }
-        z1<-rbind(z2,y3)
-        z2<-data.table(z1, key="rn")[!(rn=="DUMMY"),]
+
+#subfunction to compute alpha_i for each spike-in
+iterate_spikeins<-function(spikein_name, alpha, melted_spikeins.dt,
+mean_spikeins.dt, max_cumprob, bins, mu2sigma, sd_inflate){
+    `spike-in`<-NULL
+    melted_1spikein.dt<-melted_spikeins.dt[`spike-in`==spikein_name]
+    onespikein_samples<-dim(melted_1spikein.dt)[1]
+    mean_1spikein<-mean_spikeins.dt[`spike-in`==spikein_name]$mean
+    top_probable_count<-max(qnbinom(max_cumprob,
+        size=ceiling(mean_1spikein)^2/((2^(mu2sigma[1,1]*
+        log2(ceiling(mean_1spikein))+mu2sigma[1,2]+
+        sd_inflate*mu2sigma[1,3]))^2-ceiling(mean_1spikein)),
+        mu=ceiling(mean_1spikein)), qpois(max_cumprob,
+        ceiling(mean_1spikein)), melted_1spikein.dt$counts+1,
+        na.rm = TRUE)
+    event_space<-seq(from=0, to=top_probable_count, by=1)
+    neg_binom.density <- dnbinom(event_space,
+        size=ceiling(mean_1spikein)^2/((2^(mu2sigma[1,1]*
+        log2(ceiling(mean_1spikein))+mu2sigma[1,2]+
+        sd_inflate*mu2sigma[1,3]))^2-round(mean_1spikein)),
+        mu=ceiling(mean_1spikein))
+    poisson.density <- dpois(event_space,ceiling(mean_1spikein))
+    mixed_model.density<-alpha*neg_binom.density+(1-alpha)*poisson.density
+    event_space2<-seq(from=0, to=top_probable_count,
+        by=ceiling(top_probable_count/bins))
+    observed.hist<-hist(melted_1spikein.dt$counts, breaks=event_space,
+        include.lowest = TRUE, plot=FALSE)
+    observed.density<-observed.hist$density
+    observed.density<-diff(c(0,cumsum(observed.density)[event_space2]))
+    mixed_model.density<-diff(c(0, cumsum(mixed_model.density)[event_space2]))
+    error<-sum(abs(mixed_model.density-observed.density))
+    data.frame(`spike-in`=as.character(spikein_name),mean=mean_1spikein,
+    alpha=alpha, alpha_inv=1-alpha, error=error)
+}
+
+#subfunction to compute alpha_i for each spike-in
+iterate_alphas<-function(alpha, spikein_names, melted_spikeins.dt,
+mean_spikeins.dt, max_cumprob, bins, mu2sigma, sd_inflate){
+    if (alpha %in% seq(from=0, to=1, by=0.25)){
+        print(paste("Estimating error for spike-ins with alpha = ", alpha,
+            sep=""))
     }
-    z2<-data.table(z2, key="rn")
-    DT<-z2[,min(r.value), by=rn]
-    y1<-data.frame(as.character("DUMMY"), 1, 1, 1, 1)
-    colnames(y1)<-c("rn","Mean", "p.nbinom","p.poisson","r.value")
-    for (i in DT$rn){
-        y2<-z2[rn==i & r.value==DT[rn==i]$V1,]
-        y3<-rbind(y1,y2)
-        y1<-y3
-    }
-    rvalues.dt<-data.table(y1[-1], key="rn")
-    rvalues.dt<-rvalues.dt[rvalues.dt$Mean>=1,]
-    alpha2mean<-lm(rvalues.dt$p.nbinom~log2(rvalues.dt$Mean+0.025))
+    alpha_table.df<-do.call(rbind, lapply(spikein_names, `iterate_spikeins`,
+        alpha, melted_spikeins.dt, mean_spikeins.dt, max_cumprob, bins,
+        mu2sigma, sd_inflate))
+    alpha_table.df
+}
+
+#plots the alpha paramter as function of mean spike-in expression
+plot_alpha2mu<-function(final_alpha.dt, alpha2mean, file){
+    g<-ggplot(data=final_alpha.dt, aes(x=log2(mean),y=alpha))+
+        geom_point(fill="red",color="black", size=2.2,alpha=0.6,  pch=21)+
+        xlab("\nObserved mean spike-in expression, log2(expression)")+
+        ylab("Neg. binomial contribution parameter, alpha\n")+ggtitle("The Neg.
+        binomial contribution is a function of gene expression.\n")+
+        geom_abline(slope=coef(alpha2mean)[2], intercept = coef(alpha2mean)[1])
+  ggsave(paste(file,"alpha2mu_correlation.pdf",sep="_"),
+          plot=g, device="pdf", width=8, height=6, units = "in")
+}
+
+#compute alpha parameter empirically for mixed-model
+compute_alpha<-function(melted_spikeins.dt,estimate_mu2sigma, bins,
+tie_function, max_cumprob, sd_inflate, plot, file,
+alpha_resolution=alpha_resolution){
+    transcripts<-value<-rn<-Mean<-r.value<-p.nbinom<-NULL
+    counts<-error<-`spike-in`<-min_error<-NULL
+    mu2sigma<-estimate_mu2sigma(melted_spikeins.dt, plot, sd_inflate, file)
     if (plot==TRUE){
-        g<-ggplot(data=rvalues.dt, aes(x=log2(Mean+0.025),y=p.nbinom))+
-            geom_point(fill="red",color="black", size=2.2,alpha=0.6,  pch=21)+
-            xlab("\nObserved mean ERCC expression, log2(expression)")+
-            ylab("Neg. binomial contribution parameter, alpha\n")+
-            ggtitle("The neg. binomial contribution is 
-            a function of gene expression.\n")+
-            geom_abline(slope=coef(alpha2mean)[2], 
-            intercept = coef(alpha2mean)[1])
-        ggsave(paste(file,"alpha2mu_correlation.pdf",sep="_"), 
-            plot=g, device="pdf", width=10.5, height=7.5, units = "in")
+        plot_obs2actual(melted_spikeins.dt, file=file)
     }
-    alpha2mu<-data.frame(alpha2mu.slope=coef(alpha2mean)[2], 
+    mean_spikeins.dt<-melted_spikeins.dt[,mean(counts),
+        by=c("spike-in", "transcripts")]
+    setkey(mean_spikeins.dt, 'spike-in')
+    colnames(mean_spikeins.dt)<-c('spike-in', "transcripts", "mean")
+    spikein_names<-as.character(mean_spikeins.dt$'spike-in')
+    setkey(mean_spikeins.dt, 'spike-in')
+    alpha_vector<-seq(from=0, to=1, by=alpha_resolution)
+    alpha_table.dt<-data.table(do.call(rbind, lapply(alpha_vector,
+        `iterate_alphas`, spikein_names, melted_spikeins.dt,
+        mean_spikeins.dt, max_cumprob, bins, mu2sigma, sd_inflate)))
+    colnames(alpha_table.dt)<-c("spike-in", "mean", "alpha", "alpha_inv",
+        "error")
+    min_error.dt<-alpha_table.dt[,min(error),by=`spike-in`]
+    colnames(min_error.dt)<-c("spike-in", "min_error")
+    setkey(min_error.dt, `spike-in`)
+    setkey(alpha_table.dt, `spike-in`)
+    alpha_table.dt<-alpha_table.dt[min_error.dt]
+    if (tie_function=="minimum") {
+        final_alpha.dt<-alpha_table.dt[error==min_error, min(alpha),
+        by=c("spike-in", "mean")]
+    }
+    else {
+        final_alpha.dt<-alpha_table.dt[error==min_error, min(alpha),
+        by=c("spike-in", "mean")]
+    }
+    colnames(final_alpha.dt)<-c("spike-in", "mean", "alpha")
+    alpha2mean<-lm(final_alpha.dt$alpha~log2(final_alpha.dt$mean))
+    if (plot==TRUE){
+        plot_alpha2mu(final_alpha.dt, alpha2mean, file=file)
+    }
+    alpha2mu<-data.frame(alpha2mu.slope=coef(alpha2mean)[2],
         alpha2mu.intercept=coef(alpha2mean)[1], sd.inflate=sd_inflate)
-    parameters<-data.frame(cbind(mu2sigma,alpha2mu), 
+    model_parameters<-data.frame(cbind(mu2sigma,alpha2mu),
         row.names=c("parameter.value"))
-    parameters
+    model_parameters
 }
 
+#spike-in wise model computation
+subcompute_sample_models<-function(spikein_name, melted_spikeins.dt,
+model_parameters){
+    `spike-in`<-NULL
+    one_spikein.dt<-melted_spikeins.dt[`spike-in`==spikein_name]
+    transcript_conc<-melted_spikeins.dt[`spike-in`==spikein_name]$transcripts
+    spikenamerepeats<-melted_spikeins.dt[`spike-in`==spikein_name]$`spike-in`
+    sample_number<-length(one_spikein.dt$counts)
+    mean_1spikein<-mean(one_spikein.dt$counts)
+    alpha<-model_parameters$alpha2mu.slope*log2(mean_1spikein)+
+        model_parameters$alpha2mu.intercept
+    if (alpha>1) {alpha<-1}
+    if (alpha<0) {alpha<-0}
+    neg_binom.sample <- rnbinom(sample_number, size = ceiling(mean_1spikein
+        )^2/((2^(model_parameters$mu2sigma.slope*log2(ceiling(mean_1spikein))+
+        model_parameters$mu2sigma.intercept+model_parameters$max.res*
+        model_parameters$sd.inflate))^2-ceiling(mean_1spikein)),
+        mu = ceiling(mean_1spikein))
+    poisson.sample <- rpois(sample_number, mean_1spikein)
+    neg_binom_mixed.sample <- rnbinom(ceiling(sample_number*alpha),
+        size = ceiling(mean_1spikein)^2/((2^(model_parameters$mu2sigma.slope*
+        log2(ceiling(mean_1spikein))+model_parameters$mu2sigma.intercept+
+        model_parameters$max.res*model_parameters$sd.inflate
+        ))^2-ceiling(mean_1spikein)), mu = ceiling(mean_1spikein))
+    poisson_mixed.sample <- rpois(ceiling(sample_number*(1-alpha)),
+        mean_1spikein)
+    mixed_model.sample<-sample(append(neg_binom_mixed.sample,
+        poisson_mixed.sample), sample_number, replace = FALSE)
+    samp.mixedmodel<-data.frame(`spike-in`=spikenamerepeats,
+        transcripts=as.numeric(transcript_conc), sample=rep("Mixed",
+        sample_number), counts=mixed_model.sample)
+    samp.negbinomial<-data.frame(`spike-in`=spikenamerepeats,
+        transcripts=transcript_conc, sample=rep("NBinom", sample_number),
+        counts=neg_binom.sample)
+    samp.poisson<-data.frame(`spike-in`=spikenamerepeats,
+        transcripts=transcript_conc, sample=rep("Poisson", sample_number),
+        counts=poisson.sample)
+    model_sampling.df<-rbind(samp.mixedmodel, samp.negbinomial,
+        samp.poisson, data.frame(one_spikein.dt))
+    model_sampling.df
+}
 
-##function that computes the nulls using the estimated parameters from
-    ##compute_alpha funciton takes prepared dataframe of 
-    ##ERCCs as imput and parameters from compute_alpha
-compute_models<-function(x, parameters){
+#computes vanilla, and mixed models for plotting
+sample_models<-function(melted_spikeins.dt, model_parameters){
     rn<-NULL
-    mu2sigma.slope<-parameters$mu2sigma.slope
-    sd_inflate<-parameters$sd.inflate
-    max.res<-parameters$max.res
-    mu2sigma.intercept<-parameters$mu2sigma.intercept
-    alpha2mu.slope<-parameters$alpha2mu.slope
-    alpha2mu.intercept<-parameters$alpha2mu.intercept
-    x2<-data.frame(rn="", transcripts=-1, variable="", value=-1)
-    for (i in unique(x$rn)){
-        x1<-x[rn==i]
-        t<-x[rn==i]$transcripts
-        y<-length(x1$value)
-        p<-alpha2mu.slope*log2(mean(x1$value)+0.025)+alpha2mu.intercept
-        if (p>1) {p=1}
-        if (p<0) {p=0}
-        hx.1 <- rnbinom(ceiling(y*p),size = mean(x1$value)^2/
-            ((2^(mu2sigma.slope*log2(mean(x1$value))+mu2sigma.intercept+
-            max.res*sd_inflate))^2-mean(x1$value)),mu = mean(x1$value))
-        hx.2 <- rpois(ceiling(y*(1-p)),mean(x1$value))
-        hx1 <- rnbinom(y,size = mean(x1$value)^2/((2^(mu2sigma.slope*
-            log2(mean(x1$value))+mu2sigma.intercept+max.res*sd_inflate))^2-
-            mean(x1$value)),mu = mean(x1$value))
-        hx2 <- rpois(y,mean(x1$value))
-        hx<-sample(append(hx.1, hx.2),y,replace = FALSE)
-        sims.m<-data.frame(rn=i,transcripts=t, variable="Mixed", value=hx)
-        sims.nb<-data.frame(rn=i,transcripts=t, variable="NBinom", value=hx1)
-        sims.p<-data.frame(rn=i,transcripts=t, variable="Poisson", value=hx2)
-        x3<-rbind(x2,sims.m,sims.nb,sims.p, x1)
-        x2<-x3
-    }
-    x2[-1,]
+    spikein_names<-unique(as.character(melted_spikeins.dt$`spike-in`))
+    model_sampling<-do.call(rbind,lapply(spikein_names,
+        `subcompute_sample_models`, melted_spikeins.dt, model_parameters))
+    data.table(model_sampling)
 }
 
-##function that computes the linear fit parameters to model the false zeroes
-    ##x is dataframe with cells as columns and ERCC ids as rows
-estimate_undetected2molpercell<-function(x, plot, file){
-    V1<-NULL
+#makes plots of models more readable
+cleanup_model_names<-function(model_sampling){
+    model_sampling$distribution<-gsub(TRUE,"Observed",
+        model_sampling$sample!="Mixed" & model_sampling$sample!="NBinom" &
+        model_sampling$sample!="Poisson")
+    model_sampling[model_sampling$sample=="Mixed",
+        ]$distribution<-"Optimized"
+    model_sampling[model_sampling$sample=="Poisson",
+        ]$distribution<-"Poisson"
+    model_sampling[model_sampling$sample=="NBinom",
+        ]$distribution<-"Neg. Binomial"
+    data.table(model_sampling)
+}
+
+subplot_spikein_fits<-function(iteration,model_sampling.dt, model_view, file,
+bins, spikein_names){
+    spike.in<-distribution<-counts<-NULL
+    six_spikeins<-spikein_names[seq(from=iteration, to=length(spikein_names),
+        by=round(length(spikein_names)/6))]
+    g<-ggplot(data=model_sampling.dt[spike.in %in% six_spikeins,
+        ][distribution %in% model_view], aes(x=counts))+
+        geom_histogram(aes(fill=factor(distribution, levels=c("Poisson",
+        "Neg. Binomial", "Optimized", "Observed"))), alpha=0.30,
+        position="identity", bins=bins)+facet_wrap(~spike.in, ncol=3,nrow=4,
+        scales="free")+ylab("Observation density\n")+labs(fill="Model")+
+        xlab("\nSpike-in expression / normalized counts")+
+        ggtitle("Approximating technical noise using a refined
+        mixed distribution.\n")+scale_color_discrete(guide=FALSE)+
+        theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10))
+    savefile<-paste("spikein_fits/", paste(file,"spikein_fits_subset",
+        iteration, "plot.pdf",sep="_"),sep="")
+    ggsave(savefile, plot=g, device="pdf", width=8, height=6, units = "in")
+}
+
+#plot mixed-model fits for each spike-in molecule
+plot_spikein_fits<-function(model_sampling.dt, model_view, file, bins){
     transcripts<-NULL
-    ##Correlate no detect. probability to number of ERCC molecules per cell
-    undetected<-data.table(x[,rowSums(.SD==0), 
-        .SD=c(2:(dim(x)[2]-1))]/(dim(x)[2]-2))
-    undetected$rn<-as.character(x$rn)
-    undetected$transcripts<-as.numeric(x$transcripts)
-    undetected<-undetected[undetected$transcripts>0.9,]
-    undetected2mpc.fit<-lm(undetected$V1~log2(undetected$transcripts))
+    dir.create("spikein_fits")
+    print("Writing spike-in plots; this takes a few seconds.")
+    spikein_names<-as.character(unique(model_sampling.dt[
+        order(transcripts)]$spike.in))
+    iteration<-seq(from=1, to=round(length(spikein_names)/6), by=1)
+    lapply(iteration, `subplot_spikein_fits`,
+        model_sampling.dt=model_sampling.dt, model_view=model_view,
+        file=file, bins=bins, spikein_names=spikein_names)
+}
+
+#computes the linear fit parameters to model false zeroes
+estimate_undetected2molpercell<-function(undetected_spikeins.dt,
+plot, file){
+    V1<-transcripts<-undetected<-NULL
+    undetected_spikeins.dt<-undetected_spikeins.dt[
+        undetected!=0][transcripts>=0.5]
+    undetected2mpc.fit<-lm(undetected~log2(transcripts),
+        undetected_spikeins.dt)
     ##Read correlation paramaters into data.frame
     undetected2molpercell<-data.frame(
-        undetected2mpc.slope=coef(undetected2mpc.fit)[2], 
+        undetected2mpc.slope=coef(undetected2mpc.fit)[2],
         undetected2mpc.intercept=coef(undetected2mpc.fit)[1])
     if (plot==TRUE){
-        g<-ggplot(data=undetected,aes(x=log2(transcripts), y=V1))+geom_point()+
-            xlab("\nERCC actual counts, log2(molecules per cell)")+
-            ylab("Fraction of cells where observed ERCC count is zero")+
-            ggtitle("Conditional probability of observing a 
-            zero given transcript concentration\n")+
-            geom_abline(slope=coef(undetected2mpc.fit)[2],color="red", 
+        g<-ggplot(data=undetected_spikeins.dt,
+            aes(x=log2(transcripts), y=undetected))+geom_point()+
+            xlab("\nSpike-in actual counts, log2(molecules per cell)")+
+            ylab("Fraction of cells where observed spike-in count is zero")+
+            ggtitle("Conditional probability of observing a zero given
+            transcript concentration\n")+geom_abline(
+            slope=coef(undetected2mpc.fit)[2],color="red",
             intercept=coef(undetected2mpc.fit)[1])
-        ggsave(paste(file,"undetected2molpercell.pdf", sep="_"), plot=g, 
+        ggsave(paste(file,"undetected2molpercell.pdf", sep="_"), plot=g,
             device="pdf", width=11, height=8.5, units = "in")
     }
     undetected2molpercell
 }
 
-##function that computes the linear fit parameters from 
-    ##count data to actual molecules per cell
-counts2mpc<-function(x,plot, file){
-    transcripts<-NULL
-    value<-NULL
-    V1<-NULL
-    x<-melt(data.table(x, keep.rownames = TRUE)[,-1, with=FALSE], 
-        id.vars = c("transcripts"))
-    x<-x[transcripts>0.9,][,mean(value),by=transcripts]
-    counts2mpc.fit<-lm(log2(x$V1+0.025)~log2(x$transcripts))
+#computes relationship between counts and molecules per cell
+counts2mpc<-function(melted_spikeins.dt, plot, file){
+    transcripts<-value<-V1<-counts<-NULL
+    mean_spikeins.dt<-melted_spikeins.dt[,mean(counts),by=transcripts][
+        transcripts>0]
+    counts2mpc.fit<-lm(log2(mean_spikeins.dt$V1)~log2(
+        mean_spikeins.dt$transcripts))
     if (plot==TRUE){
-        g<-ggplot(data=x, aes(x=log2(transcripts),y=log2(V1+0.025)))+
-            geom_point()+xlab("\nERCC molecules per cell, log2(molecules)")+
-            ylab("Observed counts, log2(counts) \n")+ggtitle("Correlation of 
-            measured counts as afunction of actual transcript number.\n")+
-            geom_abline(slope=coef(counts2mpc.fit)[2], 
+        g<-ggplot(data=mean_spikeins.dt, aes(x=log2(transcripts),y=log2(V1)))+
+            geom_point()+xlab("\nSpike-in molecules per cell,
+            log2(molecules)")+ylab("Observed counts, log2(counts) \n")+
+            ggtitle("Correlation of measured counts as afunction of actual
+            transcript number.\n")+geom_abline(slope=coef(counts2mpc.fit)[2],
             intercept=coef(counts2mpc.fit)[1], color="red")
-        ggsave(paste(file,"cor_counts2moleculespercell.pdf", sep="_"), 
-            plot=g, device="pdf", width=10.5, height=7.5, units = "in")
+        ggsave(paste(file,"cor_counts2moleculespercell.pdf", sep="_"),
+            plot=g, device="pdf", width=8, height=6, units = "in")
     }
     counts2mpc.fit
 }
 
-##function that computes genewise probabilities that observed values are zero
-compute_genewise_zeroinflation<-function(x){
-    bayes_list<-list()
-    bayes_list$genewise<-data.frame(rowSums(x==0)/dim(x)[2])
-    bayes_list
+apply_bayes<-function(dropout_model.dt, noise_models){
+    dropouts_given_transcripts<-as.vector(
+        dropout_model.dt$dropouts_given_transcripts[-1])
+    genewise_prob_transcript_is_k<-as.vector(
+        noise_models$genewise$prob_transcript_is_k)
+    names(genewise_prob_transcript_is_k)<-as.character(
+        rownames(noise_models$genewise_dropouts))
+    bayes_numerator<-dropouts_given_transcripts%*%t(
+        genewise_prob_transcript_is_k)
+    noise_models$dropout_parameters<-data.table(data.frame(sweep(rbind(t(
+        noise_models$genewise_dropouts$prob_truezero), bayes_numerator), 2,
+        noise_models$genewise_dropouts$prob_geneobservedaszero, "/")),
+        keep.rownames=TRUE)
+    colnames(noise_models$dropout_parameters)<-c("transcripts",
+        colnames(noise_models$dropout_parameters)[-1])
+    noise_models$dropout_parameters$transcripts<-
+        as.numeric(noise_models$dropout_parameters$transcripts)-1
+    noise_models
 }
 
-##functino using Bayes' theorem to build drop-out noise models
-estimate_missingdata<-function(x, y, counts2mpc.fit, plot, file, 
-    dropout_inflate=dropout_inflate){
+#computes genewise probabilities that observed values are zero
+compute_genewise_dropouts<-function(dropout_model.dt, endogenous_counts.df,
+kmax){
     transcripts<-NULL
-    rn<-NULL
-    bayes_list<-compute_genewise_zeroinflation(y)
-    ERCC.dt<-data.table(x, keep.rownames = TRUE)
-    ERCC.dt<-ERCC.dt[ERCC.dt[,rowSums(.SD==0)>1, 
-        .SD=c(2:dim(ERCC.dt)[2])],][transcripts>0,]
-    undetected2mpc<-estimate_undetected2molpercell(ERCC.dt, 
+    noise_models<-list()
+    noise_models$genewise_dropouts<-data.frame(rowSums(endogenous_counts.df==0
+        )/dim(endogenous_counts.df)[2])
+    colnames(noise_models$genewise_dropouts)<-"prob_geneobservedaszero"
+    noise_models$genewise_dropouts$prob_truezero<-(
+        noise_models$genewise_dropouts$prob_geneobservedaszero-
+        sum(dropout_model.dt$dropouts_given_transcripts[-1])/kmax)/
+        (1-sum(dropout_model.dt$dropouts_given_transcripts[-1])/kmax)
+    noise_models$genewise_dropouts[
+        noise_models$genewise_dropouts$prob_truezero<0,]$prob_truezero<-0
+    noise_models$genewise_dropouts$prob_transcript_is_k<-(1-
+        noise_models$genewise_dropouts$prob_truezero)*1/kmax
+    noise_models<-apply_bayes(dropout_model.dt=dropout_model.dt,
+        noise_models=noise_models)
+    setkey(noise_models$dropout_parameters, transcripts)
+    setkey(dropout_model.dt, transcripts)
+    noise_models$dropout_parameters<-dropout_model.dt[
+        noise_models$dropout_parameters,]
+    setkey(noise_models$dropout_parameters, transcripts)
+    noise_models$dropout_parameters<-data.frame(
+        noise_models$dropout_parameters)
+    noise_models
+}
+
+build_dropoutmodel<-function(kmax, undetected2mpc, counts2mpc.fit,
+dropout_inflate){
+    transcript_values<-seq(from=0, to=kmax, by=1)
+    dropout_model.dt<-data.table(data.frame(
+        transcripts=transcript_values))
+    dropout_model.dt$dropouts_given_transcripts<-(1/as.numeric(
+        dropout_inflate))*as.numeric(undetected2mpc[1])*log2(
+        dropout_model.dt$transcripts)+as.numeric(undetected2mpc[2])
+    dropout_model.dt[dropout_model.dt$dropouts_given_transcripts>1 |
+        dropout_model.dt$dropouts_given_transcripts==Inf,
+        ]$dropouts_given_transcripts<-1
+    dropout_model.dt$counts<-2^(coef(counts2mpc.fit)[2]*
+        log2(dropout_model.dt$transcripts)+coef(counts2mpc.fit)[1])
+    dropout_model.dt
+}
+
+
+create_null_dropout_model<-function(counts2mpc.fit, endogenous_counts.df){
+    noise_models<-list()
+    transcripts<-seq(from=0, to=10, by=1)
+    dropouts_given_transcripts<-c(1,rep(0,10))
+    counts<-c(0, 2^(coef(counts2mpc.fit)[2]*
+        log2(transcripts[-1])+coef(counts2mpc.fit)[1]))
+    gene_nodropouts<-data.frame(dropouts_given_transcripts%*%t(rep(1,
+        length(rownames(endogenous_counts.df)))), row.names = transcripts)
+    colnames(gene_nodropouts)<-rownames(endogenous_counts.df)
+    dropout_null<-data.frame(transcripts=transcripts,
+        dropouts_given_transcripts=dropouts_given_transcripts,
+        counts=counts)
+    rownames(dropout_null)<-transcripts
+    noise_models$dropout_parameters<-cbind(dropout_null, gene_nodropouts)
+    noise_models
+}
+
+#Uses Bayes' theorem to build drop-out noise models
+estimate_missingdata<-function(melted_spikeins.dt, endogenous_counts.df,
+counts2mpc.fit, plot, file, dropout_inflate=dropout_inflate, sample_number){
+    transcripts<-rn<-counts<-NULL
+    force(sample_number)
+    undetected_spikeins.dt<-melted_spikeins.dt[,sum(counts==0)/sample_number,
+        by=c("spike-in", "transcripts")][transcripts>0,]
+    colnames(undetected_spikeins.dt)<-c("spike-in", "transcripts",
+        "undetected")
+    undetected2mpc<-estimate_undetected2molpercell(undetected_spikeins.dt,
         plot=plot, file=file)
     kmax<-ceiling(2^(-as.numeric(undetected2mpc[2])/
-        ((1/as.numeric(dropout_inflate))*as.numeric(undetected2mpc[1]))))
-    k<-seq(from=0, to=kmax, by=1)
-    y0.df<-data.frame(k=k)
-    y0.df$Py0givenk<-(1/as.numeric(dropout_inflate))*
-        as.numeric(undetected2mpc[1])*log2(y0.df$k)+
-        as.numeric(undetected2mpc[2])
-    y0.dt<-data.table(y0.df, keep.rownames = TRUE)
-    ## Assume that if k=0, then the probability of observing 0 is 1
-    y0.dt[y0.dt$Py0givenk>1 | y0.dt$Py0givenk==Inf,]$Py0givenk<- 1
-    y0.dt[y0.dt$Py0givenk<0,]$Py0givenk<-0 ## squeeze negative to 0
-    y0.dt<-y0.dt[y0.dt$Py0givenk>0,]
-    y0.dt$Counts<-2^(coef(counts2mpc.fit)[2]*log2(y0.dt$k)+ 
-        coef(counts2mpc.fit)[1])
-    size<-dim(y0.dt)[1]-1
-    colnames(bayes_list$genewise)<-"py0"
-    bayes_list$genewise$pk0<-(bayes_list$genewise$py0-
-        sum(y0.dt$Py0givenk[-1])/size)/
-        (1-sum(y0.dt$Py0givenk[-1])/size)
-    if (length(bayes_list$genewise[bayes_list$genewise$pk0<0,]$pk0)>0) {
-        bayes_list$genewise[bayes_list$genewise$pk0<0,]$pk0<-0
-        bayes_list$genewise[bayes_list$genewise$pk0==0 & 
-            !(bayes_list$genewise$py0==0),]$py0<-sum(y0.dt$Py0givenk[-1])/size
+        ((1/as.numeric(dropout_inflate))*as.numeric(undetected2mpc[1]))))-1
+    if (sum(undetected_spikeins.dt$undetected==0)==0){
+        print(paste("Warning: there are no spike-ins that were detected in",
+            "every sample. As a result the actual transcript count",
+            "threshold, k, at which drop-outs are not present will be",
+            "extrapolated rather than interpolated. The extrapolated value ",
+            "for k is, ", kmax, ".", sep=""))
     }
-    bayes_list$genewise$pki<-(1-bayes_list$genewise$pk0)*1/size
-    py0givenk<-as.vector(y0.dt$Py0givenk[-1])
-    gene.pki<-as.vector(bayes_list$genewise$pki)
-    names(gene.pki)<-as.character(rownames(bayes_list$genewise))
-    bayes_list$inferred_prob<-py0givenk%*%t(gene.pki)
-    bayes_list$inferred_prob<-sweep(rbind(t(bayes_list$genewise$pk0),
-        bayes_list$inferred_prob), 2, bayes_list$genewise$py0, "/")
-    bayes_list$inferred_prob<-data.table(data.frame(bayes_list$inferred_prob), 
-        keep.rownames = TRUE)
-    bayes_list$bayes_parameters<-y0.dt
-    setkey(bayes_list$bayes_parameters,rn)
-    setkey(bayes_list$inferred_prob, rn)
-    bayes_list$bayes_parameters<-
-        bayes_list$bayes_parameters[bayes_list$inferred_prob,]
-    setkey(bayes_list$bayes_parameters, k)
-    bayes_list
+    if (kmax>0){
+        print(paste("There are adequate spike-in drop-outs to build the",
+             "drop-out model. Estimating the drop-out model now."), sep="")
+        noise_models<-compute_genewise_dropouts(build_dropoutmodel(kmax=kmax,
+            undetected2mpc=undetected2mpc, counts2mpc.fit=counts2mpc.fit,
+            dropout_inflate=dropout_inflate), kmax=kmax,
+            endogenous_counts.df=endogenous_counts.df)
+    } else {
+        print(paste("Warning: there are inadequate spike-in drop-outs to",
+             "build the drop-out model. All observed zeros will be treated",
+             "as true zeros during simulation of technical replicates."),
+             sep="")
+        noise_models<-create_null_dropout_model(counts2mpc.fit=counts2mpc.fit,
+            endogenous_counts.df=endogenous_counts.df)
+    }
+    noise_models
 }
 
+write_noise_model<-function(SCEList, file){
+    metadata<-assay<-NULL
+    write.table(metadata(SCEList)$spikein_parameters, file=paste(file,
+        "parameters4randomize.xls", sep="_"), quote=FALSE,
+        sep="\t", row.names = FALSE)
+    write.table(metadata(SCEList)$dropout_parameters,
+        file=paste(file, "bayesianestimates.xls", sep="_"),
+        quote=FALSE, sep="\t", row.names=FALSE )
+    write.table(assay(SCEList, "observed_expression"), file=paste(file,
+        "counts4clusterperturbation.xls", sep="_"), quote=FALSE,
+        sep="\t", row.names=TRUE)
+    print(paste("Parameters have been saved into the current directory",
+        "in bayesianestimates.xls and parameters4randomize.xls."), sep="")
+}
 
 
 ############################ USER COMMANDS ###################################
-##x is the dataframe of ERCCs, y is the data frame of ERCCs with actual 
-    ##molecules per cell in the second column, z is the counts matrix
-##model_view should be a vector of c("Optimized", 
-    ##"Poisson", "Neg. Binomial", "Observed")
-estimate_noiseparameters<-function(spike_counts.df, endogenous_counts.df, 
-    spike_conc.df, plot=FALSE, sd_inflate=0, granularity=300, 
-    write.noise.model=TRUE, file="noise_estimation", 
-    model_view=c("Observed","Optimized"), total_sampling=2500, 
-    dropout_inflate=1, alpha_granularity=0.005){
-    transcripts<-NULL
-    value<-NULL
-    V1<-NULL
-    rn<-NULL
-    distribution<-NULL
-    force(granularity)
-    force(sd_inflate)
-    force(alpha_granularity)
-    ERCC.prepared.counts<-prepare_data(spike_counts.df, spike_conc.df)
-    actual.prepared.counts<-endogenous_counts.df
-    print("Fitting parameter alpha to establish ERCC-derived noise model.")
-    parameters<-compute_alpha(ERCC.prepared.counts,estimate_mu2sigma, 
-        granularity=granularity, sd_inflate=sd_inflate, plot=plot, file=file, 
-        alpha_granularity=alpha_granularity)
-    ERCC.m.counts<-melt(data.table(ERCC.prepared.counts, 
-        keep.rownames = TRUE), id.vars = c("rn", "transcripts"))
-    ERCC.m.valid<-ERCC.m.counts[,mean(value)>0, by="rn"]
-    setkey(ERCC.m.valid, "rn")
-    setkey(ERCC.m.counts,"rn")
-    ERCC.m.counts<-ERCC.m.valid[ERCC.m.counts,][V1==TRUE,][,-2,with=FALSE]
-    models.dt<-compute_models(ERCC.m.counts, parameters)
-    models.dt$distribution<-gsub(TRUE,"Observed",models.dt$variable != "Mixed" 
-        & models.dt$variable != "NBinom" & models.dt$variable !="Poisson")
-    models.dt[models.dt$variable=="Mixed",]$distribution<-"Optimized"
-    models.dt[models.dt$variable=="Poisson"]$distribution<-"Poisson"
-    models.dt[models.dt$variable=="NBinom"]$distribution<-"Neg. Binomial"
+estimate_noiseparameters<-function(SCEList, plot=FALSE, sd_inflate=0,
+max_cumprob=0.9999, bins=10, write.noise.model=TRUE, file="noise_estimation",
+dropout_inflate=1, model_view=c("Observed", "Optimized"),
+alpha_resolution=0.005, tie_function="maximum"){
+    transcripts<-value<-V1<-rn<-distribution<-metadata<-NULL
+    `metadata<-`<-assay<-NULL
+    spike_counts.df<-data.frame(assay(SCEList, "observed_expression")[isSpike(
+        SCEList, "ERCC_spikes"),])
+    spike_conc.df<-metadata(SCEList)$spikeConcentrations
+    endogenous_counts.df<-data.frame(assay(SCEList, "observed_expression"))
+    melted_spikeins.dt<-melt_spikeins(prepare_data(spike_counts.df,
+        spike_conc.df))
+    print("Fitting parameter alpha to establish spike-in derived noise model.")
+    model_parameters<-compute_alpha(melted_spikeins.dt=melted_spikeins.dt,
+        estimate_mu2sigma, bins=bins, max_cumprob=max_cumprob, plot=plot,
+        sd_inflate=sd_inflate, file=file, tie_function = tie_function,
+        alpha_resolution=alpha_resolution)
+    model_sampling.dt<-cleanup_model_names(sample_models(melted_spikeins.dt,
+        model_parameters))
     if (plot==TRUE){
-    ERCCnames<-as.character(unique(models.dt[order(transcripts)]$rn))
-    round(length(ERCCnames)/6)
-    dir.create("ERCCfit_plots")
-    for (i in seq(from=1, to=round(length(ERCCnames)/6), by=1)){
-        p<-ERCCnames[seq(from=i, to=length(ERCCnames), 
-            by=round(length(ERCCnames)/6))]
-        g<-ggplot(data=models.dt[rn %in% p,][distribution %in% model_view],
-            aes(x=value))+geom_histogram(aes(fill=factor(distribution, 
-            levels=c("Poisson", "Neg. Binomial", "Optimized", "Observed"))), 
-            alpha=0.30,position="identity", bins=granularity)+
-            facet_wrap(~rn, ncol=3,nrow=4, scales="free")+
-            ylab("Observation density\n")+labs(fill="Model")+
-            xlab("\nERCC expression / normalized counts")+
-            ggtitle("Approximating technical noise using a refined
-            mixed distribution.\n")+scale_color_discrete(guide=FALSE)+
-            theme(axis.text.x = element_text(angle = 90, hjust = 1, size=10))
-        savefile<-paste("ERCCfit_plots/", 
-            paste(file,"ERCCfits_subset", i, "plot.pdf",sep="_"),sep="")
-        ggsave(savefile, plot=g, device="pdf", width=10.5, height=7.5, 
-            units = "in")
+        plot_spikein_fits(model_sampling.dt, model_view=model_view,
+            file=file, bins=bins)
     }
-    }
-    counts2mpc.fit<-counts2mpc(ERCC.prepared.counts, plot=plot, file=file)
-    bayes_dropouts<-estimate_missingdata(ERCC.prepared.counts, 
-        actual.prepared.counts, counts2mpc.fit ,plot=plot, 
-        file=file, dropout_inflate=dropout_inflate)
-    bayes_dropouts$ERCC_parameters<-parameters
-    noise_model<-bayes_dropouts
-    noise_model$models.dt<-models.dt
-    noise_model$original.counts<-endogenous_counts.df
-    noise_model$spike.conc<-spike_conc.df
-    noise_model$spike.counts<-spike_counts.df
+    counts2mpc.fit<-counts2mpc(melted_spikeins.dt, plot=plot, file=file)
+    sample_number<-dim(spike_counts.df)[2]
+    noise_models<-estimate_missingdata(melted_spikeins.dt,
+        endogenous_counts.df, counts2mpc.fit ,plot=plot,
+        file=file, dropout_inflate=dropout_inflate,
+        sample_number=sample_number)
+    ##Prepare final output
+    metadata(SCEList)<-list(dropout_parameters=noise_models$dropout_parameters,
+        spikein_parameters=model_parameters, spikeConcentrations=spike_conc.df,
+        genewiseDropouts=noise_models$genewise_dropouts)
     if (write.noise.model==TRUE) {
-        write.table(data.table(noise_model$ERCC_parameters, 
-            keep.rownames = TRUE), file=paste(file, 
-            "parameters4randomize.xls", sep="_"), quote=FALSE, 
-            sep="\t", row.names = FALSE)
-        write.table(noise_model$bayes_parameters, 
-            file=paste(file, "bayesianestimates.xls", sep="_"), 
-            quote=FALSE, sep="\t", row.names=FALSE )
-        print("Parameters have been saved into the current directory 
-            in bayesianestimates.xls and parameters4randomize.xls.")
-        noise_model
-    } else {
-    noise_model
+        write_noise_model(SCEList=SCEList, file=file)
     }
+    SCEList
 }

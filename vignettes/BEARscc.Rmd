@@ -16,6 +16,13 @@ knitr::opts_chunk$set(
 )
 ```
 \newpage
+
+
+```{r prepare_libaries, eval=TRUE, include=FALSE}
+library("data.table")
+library("SingleCellExperiment")
+```
+
 #Introduction
 
 ##Scope
@@ -61,15 +68,14 @@ For now, installing BEARscc is easy. You can download a source package
 but give it the location of the downloaded file:
 
 
-```{r install_BEARscc, include=TRUE}
-install.packages('../inst/BEARscc_0.99.0.tar.gz', repos = NULL, type="source")
-library("BEARscc")
+```{r install_BEARscc, include=TRUE, eval=FALSE}
+install.packages('../inst/BEARscc_0.99.3.tar.gz', repos = NULL, type="source")
 ```
 
 
 ##Citation
 BEARscc and its associated manuscript are currently under review for 
-publication at a peer-reviewed journal. For now please cite the 
+publication at a peer-reviewed journal. For now, please cite the 
 bioRxiv pre-print:
 
     Severson, DT. Owen, RP. White, MJ. Lu, X. Schuster-Boeckler, B. 
@@ -91,47 +97,22 @@ should provide users with a comprehensive tutorial of the use and utlity
 of BEARscc as a tool for vetting single cell clusters with respect to 
 experimental noise. 
 
-Before getting started, we need to sort some data, dependencies, and
-aesthetic packages for the purpose of this document.
-
-First, we are using the excellent
-[`data.table`](https://cran.r-project.org/web/packages/data.table/index.html),
-[`ggplot2`](https://cran.r-project.org/web/packages/ggplot2/index.html),
-and
-[`cowplot`](https://cran.r-project.org/web/packages/cowplot/index.html) 
-libraries here, which can be easily installed by typing:
-
-```{r install, eval=FALSE, include=TRUE}
-install.packages('data.table')
-install.packages('ggplot2')
-install.packages('cowplot')
-```
-
-Next, BEARscc is equipped with a set of sample data for the purpose
-of testing functions, examples in help files, and this nifty
-tutorial. We can load `data.table` and access the data provided 
-with the package as follows:
+Before getting started, we need to load some example single cell data.BEARscc 
+is equipped with a set of sample data for the purpose of testing functions, 
+examples in help files, and this nifty tutorial. The data may be loaded as 
+follows:
 
 ```{r load_data, eval=TRUE}
-library('data.table')
+library("BEARscc")
 data("BEARscc_examples")
 ```
 
 The loaded file `BEARscc_examples` is equipped with separate `data.frame` 
 objects including ERCC spike-in observations (`ERCC.counts.df`), 
 endogenous count observations (`data.counts.df`), and the expected or 
-actual spike-in concentrations.
-
-In the event we were working with a seperate set of data, the spike-in 
-concentrations `data.frame` can be computed from the factory 
-concentrations and the relevant dilution protocol utilized in the experiment. 
-Counts tables would need to be mapped and counted with preferred software, 
-and the spike-in control counts (ERCC or otherwise) would need to be 
-seperated from the endogenous counts into two distinct `data.frame` objects.
-
-For now we can have a look at the first few lines and columns of each 
-of the loaded files:
-
+actual spike-in concentrations (`ERCC.meta.df`) as well as a 
+`SingleCellExperiment` object that contains all of the above seperate
+components (`BEAR_examples.sce`) as shown below:
 
 ```{r display_data, eval=TRUE}
 head(ERCC.counts.df[,1:2])
@@ -139,7 +120,40 @@ head(ERCC.counts.df[,1:2])
 head(data.counts.df[,1:2]) 
 
 head(ERCC.meta.df)
+
+BEAR_examples.sce 
 ```
+
+In the event we were working with a new set of data, the spike-in 
+concentrations `data.frame` can be computed from industry reported 
+concentrations and the relevant dilution protocol utilized in the 
+experiment. Count tables would need to be mapped and counted with 
+preferred software, and the spike-in control counts (ERCC or otherwise) 
+would need to be identified from the endogenous counts. 
+
+Below is how one would create a `SingleCellExperiment` object from 
+spike-in count, endogenous count, and spike-in concentration `data.frame` 
+objects. Note how we create the `observed_expression` assay object in the 
+following code. This object is essential in that all estimation and simulation
+of replicates occurs assuming these are the observed counts (normalized or 
+otherwise). Without them BEARscc will throw an error indicating that 
+`"observed_expression"` not in `names(assays(<SingleCellExperiment>))`.
+Also, `data.counts.df` in this example includes both spike-in genes and 
+endogenous genes. In general, we recommend spike-in genes be simulated
+with endogenous genes as a control, and this will be done by default
+when the `SingleCellExperiment` object is used. 
+
+```{r create_SCEList, eval=TRUE}
+BEAR.se <- SummarizedExperiment(list(counts=as.matrix(data.counts.df)))
+BEAR_examples.sce<-as(BEAR.se, "SingleCellExperiment")
+metadata(BEAR_examples.sce)<-list(spikeConcentrations=ERCC.meta.df)
+assay(BEAR_examples.sce, "observed_expression")<-counts(BEAR_examples.sce)
+isSpike(BEAR_examples.sce, "ERCC_spikes")<-grepl("^ERCC-", 
+    rownames(BEAR_examples.sce))
+```
+
+Running the above code should yield a `SingleCellExperiment` object identical
+to the one that loads with `data("BEARscc_examples")`.
 
 
 ##Building the noise model
@@ -149,55 +163,42 @@ control data found in `BEARscc_examples`; however, users are encouraged to
 work through the tutorial with their own single cell data provided some form 
 of spike-ins were included in the experiment. Building the noise models with 
 BEARscc is relatively straightforward with `estimate_noiseparameters()`. We
-simply provide the function with the previously discussed 
-spike-in (ERCCs here) known concentrations, endogenous count measurements, 
-and spike-in counts measurement `data.frame` objects. Here, the parameter 
-`alpha_granularity is set to 0.1 to speed things along, but we suggest values 
+simply provide the function with the now adequately annotated 
+`SingleCellExperiment` object, `BEAR_examples.sce`. Here, the parameter 
+`alpha_resolution is set to 0.1 to speed things along, but we suggest values 
 between 0.001 and 0.01 be used in real applications of BEARscc.
 
 ```{r estimate_noise, eval=TRUE}
-results <- estimate_noiseparameters(ERCC.counts.df,
-                                    data.counts.df,
-                                    ERCC.meta.df,
-                                    granularity=30,
-                                    alpha_granularity = 0.05,
-                                    write.noise.model=FALSE,
-                                    model_view=c("Observed","Optimized"))
+BEAR_examples.sce <- estimate_noiseparameters(BEAR_examples.sce,
+    max_cumprob=0.9999, alpha_resolution = 0.1, bins=10,
+    write.noise.model=FALSE, file="BEAR_examples")
 ```
 
 Several options exist for `estimate_noiseparameters()`. These are 
-fully documented in the help page `?estimate_noiseparameters`. Some of 
-the more important optionsfor the user are listed below
-
-\begin{itemize}
-\item `granularity` determines the number of bins for comparison of the
-    quality of fit between the mixed-model and observed data for each alpha. 
-    This should be set lower for small datasets and higher for 
-    datasets with more observations
-\item `write.noise.model=TRUE` outputs two tab-delimited files containing the 
-    dropout effects and noise model parameters; this allows users to apply 
-    the noise generation on a seperate high compute node. 
-\item `plot=TRUE` will plot all linear fits and individual ERCCs 
-    distributions across samples
-\item `file="./Rplot"` determines the root name for all plots, which write to 
-    the current working directory unless a path is contained in the root name. 
-\end{itemize}
+fully documented in the help page `?estimate_noiseparameters`. 
 
 ## Simulating technical replicates
 
 Following estimation of noise, the parameters computed are then used to 
 generate a simulate a technical replicate. Here we will simulate replicates 
 on our local computer, but frequently users will want to utilize the methods 
-described in Section 2.4.
+described in Section 2.4. Notably the necessary parameters are conveniently 
+stored in the `metadata` of our `SingleCellExpression` object,
+`BEAR_examples.sce` following noise estimation, and so we simply run: 
     
 ```{r simulate_replicates, eval=TRUE}
-    sim_replicates <- create_noiseinjected_counts(results, n=10)
+    BEAR_examples.sce <- simulate_replicates(BEAR_examples.sce,
+        max_cumprob=0.9999, n=10)
 ```
 
-Recall that `results` is the list object we recently generated with the 
+Recall that `BEAR_examples.sce` is our `SingleCellExperiment` object that we 
+recently annoated with model parameters describing experimental noise using the
 function `estimate_noiseparameters()` and note that the variable `n` is the 
-desired number of simulated technical replicates (e.g. 10). The resulting 
-object is a list, where each element is a simulated technical replicate, 
+desired number of simulated technical replicates (e.g. 10). Finally, the
+`maxcum_prob` is identical to its use in the noise estimation. If the user
+deviated from the default parameter, it is highly recommended that this value
+be identical to the value utilized in `estimate_noiseparmaters()` The resulting
+ object is a list, where each element is a simulated technical replicate, 
 and one element is the original counts matrix. 
 
 
@@ -208,10 +209,7 @@ noise estimate files with the observed counts table to a high performance
 computing environment. The following code provides an example:
     
 ```{r estimate_noise_HPC, eval=FALSE, include=TRUE}
-results <- estimate_noiseparameters(ERCC.counts.df,
-                                    data.counts.df,
-                                    ERCC.meta.df,
-                                    granularity=30,
+BEAR_examples.sce <- estimate_noiseparameters(BEAR_examples.sce,
                                     write.noise.model=TRUE,
                                     file="tutorial_example",
                                     model_view=c("Observed","Optimized"))
@@ -221,21 +219,14 @@ After running the above code, then within the current working directory
 (if unsure use `getwd()`), we should find the two tab-delimited files
 that together completely describe the BEARscc noise model. These are the 
 parameters describing the mixed model of technical variation 
-(`tutorial_example_parameters.xls`, see Section 3.1.1) and the parameters 
-describing the drop-out model (`tutorial_example_bayesianestimates.xls`, 
-see Section 3.1.2)
-
-Next we need to provide a copy of the endogenous counts with spike-in
-measurements to BEARscc on the high performance compute cluster. Therefore,
-we take the combine the spike-in and endogenous count `data.frame` objects
-into a single `data.table` and write this structure out as a tab-delimited
-file as follows:
-
-```{r write_data, eval=FALSE, include=TRUE}
-counts.dt<-data.table(rbind(ERCC.counts.df, data.counts.df), 
-    keep.rownames = TRUE)
-write.table(counts.dt, file="counts_example.tsv")
-```
+(`tutorial_example_parameters4randomize.xls`, see Section 3.1.1) and the 
+parameters describing the drop-out model 
+(`tutorial_example_bayesianestimates.xls`, see Section 3.1.2). In addition, 
+we should find our `"observed_expression"`matrix in the form of 
+`tutorial_example_counts4clusterperturbation.xls`. Note that the `xls` 
+subscript just allows users to quickly open these tab-delimited files in 
+Microsoft Excel if desired, but these can be readily viewed on the terminal 
+or in simple text editors as well. 
 
 With the original counts file and noise model prepared, we then copy these
 files to our high performance compute cluster. The following code provides
@@ -243,11 +234,10 @@ a sense of how to proceed once these files have been copied to a high
 performance cluster; however, the job submission structure of each user's
 environment will dictate the precise syntax for the following procedure.
 
-The script `HPC_generate_noise_matrices` contains analogous 
-`create_noiseinjected_counts()` functions that are adapted to a 
-parallel environment along with suggested code to call these functions.
-To utilize these functions for simulating technical replicates within a
-parallel environment, please install BEARscc on the relevant cluster. 
+The script `HPC_generate_noise_matrices` contains an analogous 
+`simulate_replicates()` for a high performance computational node.
+To utilize these functions for simulating technical replicates on a 
+cluster, please install BEARscc on the relevant cluster. 
 The user should write an R script to load the BEARscc library and
 run the clustering. The following code provides a suggested format for
 both calling the R script with a bash job script and the relevant R 
@@ -272,33 +262,24 @@ Noting that the file `HPC_run_example.R` contains the following
 suggested code to run BEARscc:
 
 ```{r HPC_example, eval=FALSE, include=TRUE}
-library("data.table")
 library("BEARscc")
-library("parallel")
 
 #### Load data ####
 ITERATION<-commandArgs(trailingOnly=TRUE)[1]
-no_cores<-4
-counts.dt<-fread("counts_example.tsv")
+counts.df<-read.delim("tutorial_example_counts4clusterperturbation.xls")
 #filter out zero counts to speed up algorithm
-counts.dt<-counts.dt[rowSums(counts.dt[,.SD>0,.SD=c(2:dim(counts.dt)[2])])>0,]
+counts.df<-counts.df[rowSums(counts.df)>0,]
 probs4detection<-fread("tutorial_example_bayesianestimates.xls")
 parameters<-fread("tutorial_example_parameters4randomize.xls")
 
 #### Simulate replicates ####
-cl <- makeCluster(no_cores, FORK=TRUE)
-counts.error<-prepare_probabilities(counts.dt,
-    probs4detection=probs4detection, parameters=parameters,
-    HPC_genewise_permute_count=HPC_genewise_permute_count,
-    HPC_permute_count=HPC_permute_count, HPC_randomizer=HPC_randomizer,
-    total_sampling=2500)
-counts.error.df<-data.frame(t(counts.error), row.names=counts.dt$GENE_ID)
-counts.error.dt<-data.table(counts.error.df, keep.rownames=TRUE)
-colnames(counts.error.dt)<-colnames(counts.dt)
-write.table(counts.error.dt, file=paste("simulated_replicates/",
+counts.error<-HPC_simulate_replicates(counts_matrix=counts.df,
+    dropout_parameters=dropout_parameters,
+    spikein_parameters=spikein_parameters)
+write.table(counts.error, file=paste("simulated_replicates/",
     paste(ITERATION,"sim_replicate_counts.txt",sep="_"),
-    sep=""), quote =FALSE, row.names=FALSE)
-stopCluster(cl)
+    sep=""), quote =FALSE, row.names=TRUE)
+#########
 ```
 
 The script generates seperate simulated technical replicate files, 
@@ -322,20 +303,32 @@ reclustering function:
 
 ```{r recluster, include=TRUE, eval=TRUE}
 recluster <- function(x) {
-    x <- data.frame(x, row.names = "GENE_ID")
+    x <- data.frame(x)
     scramble <- sample(colnames(x), size=length(colnames(x)), replace=FALSE)
     x <- x[,scramble]
-    clust <- hclust(dist(t(x),method="euclidean"),method="complete")
+    clust <- hclust(dist(t(x), method="euclidean"),method="complete")
     clust <- cutree(clust,2)
     data.frame(clust)
 }
 ``` 
 
+First, we need to determine how the observed data clusters under our algorithm
+of choice (e.g. `recluster()`, which is a simple hiearchical clustering
+for illustrative purposes). These are the clusters that can be evaluated by 
+`BEARscc` and compared to `BEARscc` meta-clustering:
+
+```{r original_clusters, include=TRUE, eval=TRUE}
+OG_clusters<-recluster(data.frame(assay(BEAR_examples.sce, 
+    "observed_expression")))
+colnames(OG_clusters)<-"Original"
+```
+
 We then apply the function `recluster()` to all simulated technical replicates 
 and the original counts matrix and manipulate the list into a `data.frame`. 
 
 ```{r recluster_go, include=TRUE, evalue=TRUE}
-cluster.list<-lapply(sim_replicates, `recluster`)
+cluster.list<-lapply(metadata(BEAR_examples.sce)$simulated_replicates, 
+    `recluster`)
 clusters.df<-do.call("cbind", cluster.list)
 colnames(clusters.df)<-names(cluster.list)
 ```
@@ -399,7 +392,7 @@ robustness as well as the suggested BEARscc clusters:
 
 ```{r add_original, include=TRUE, eval=TRUE}
 BEARscc_clusts.df <- cbind(BEARscc_clusts.df, 
-    Original=clusters.df$Original_counts)
+    Original=OG_clusters)
 ```
 
 ### Understanding robustness at the cluster level
@@ -408,16 +401,16 @@ Now we can compute cluster metrics for each of the BEARscc cluster
 number scenarious and the original clustering; indeed, any cluster labels
 of the users choosing could be supplied to vet with the information provided
 by the noise consensus. We accomplish this by running the command and
-displaying the first 5 rows of the resulting `data.table`:
+displaying the first 5 rows of the resulting melted `data.frame`:
 
 ```{r compute_cluster_scores, include=TRUE, eval=TRUE}
-cluster_scores.dt <- report_cluster_metrics(BEARscc_clusts.df, 
+cluster_scores.df <- report_cluster_metrics(BEARscc_clusts.df, 
     noise_consensus, plot=FALSE)
-head(cluster_scores.dt, n=5)
+head(cluster_scores.df, n=5)
 ```
 
-Above is a melted `data.table` that displays the name of each cluster, 
-    the size of each cluster, the metric (score, Promiscuity, Stability), 
+Above is a melted `data.frame` that displays the name of each cluster, 
+    the size of each cluster, the metric (Score, Promiscuity, Stability), 
     the value of each metric for the respective cluster and clustering, 
     the clustering in question (1,2,...,Original), whether the cluster 
     consists of only one cell, and finally the mean of each metric 
@@ -432,14 +425,18 @@ cluster in the 1 cluster scenario is much larger than either cluster of the
 2 cluster scenario, and that this is reflected in the average clustering 
 column. 
 
-We can examine the BEARcc metrics for the original cluster using `ggplot2`:
+We can examine the BEARcc metrics for the original cluster using `ggplot2`
+and by subsetting the `data.frame` to the original cluster and the score
+metric:
 
 ```{r plot_clusterscores_original, include=TRUE, eval=TRUE}
 library("ggplot2")
 library("cowplot")
-ggplot(cluster_scores.dt[Clustering=="Original"][Metric=="score"], 
-    aes(x=`Cluster identity`, y=Value) )+
-    geom_bar(aes(fill=`Cluster identity`), stat="identity")+
+original_scores.df<-cluster_scores.df[
+    cluster_scores.df$Clustering=="Original",]
+ggplot(original_scores.df[original_scores.df$Metric=="Score",], 
+    aes(x=`Cluster.identity`, y=Value) )+
+    geom_bar(aes(fill=`Cluster.identity`), stat="identity")+
     xlab("Cluster identity")+ylab("Cluster score")+
     ggtitle("Original cluster scores")+guides(fill=FALSE)
 ```
@@ -449,11 +446,11 @@ the ground truth consists of a single biological entity. The stability and
 promiscuity metrics bear this out:
 
 ```{r plot_clusterstability_original, include=TRUE, eval=TRUE}
-ggplot(cluster_scores.dt[Clustering=="Original"][Metric=="Stability"], 
-    aes(x=`Cluster identity`, y=Value) )+
-    geom_bar(aes(fill=`Cluster identity`), stat="identity")+
-    xlab("Cluster identity")+ylab("Cluster stability")+
-    ggtitle("Original cluster stability")+guides(fill=FALSE)
+ggplot(original_scores.df[original_scores.df$Metric=="Stability",], 
+       aes(x=`Cluster.identity`, y=Value) )+
+  geom_bar(aes(fill=`Cluster.identity`), stat="identity")+
+  xlab("Cluster identity")+ylab("Cluster stability")+
+  ggtitle("Original cluster stability")+guides(fill=FALSE)
 ```
 
 The high stability exhibited in the example above is not suprising as samples
@@ -461,11 +458,11 @@ in this example should have strong association with one another. However, the
 promuscuity below reveals the reason for the low score:
 
 ```{r plot_clusterpromiscuity_original, include=TRUE, eval=TRUE}
-ggplot(cluster_scores.dt[Clustering=="Original"][Metric=="Promiscuity"], 
-    aes(x=`Cluster identity`, y=Value) )+
-    geom_bar(aes(fill=`Cluster identity`), stat="identity")+
-    xlab("Cluster identity")+ylab("Cluster promiscuity")+
-    ggtitle("Original cluster promiscuity")+guides(fill=FALSE)
+ggplot(original_scores.df[original_scores.df$Metric=="Promiscuity",], 
+       aes(x=`Cluster.identity`, y=Value) )+
+  geom_bar(aes(fill=`Cluster.identity`), stat="identity")+
+  xlab("Cluster identity")+ylab("Cluster promiscuity")+
+  ggtitle("Original cluster promiscuity")+guides(fill=FALSE)
 ```
 
 Despite the high stability, the samples within each cluster have high 
@@ -481,13 +478,13 @@ Below we demonstrate how to compute the cell metrics and display 4 cells for
 illustrative purposes. 
 
 ```{r compute_cell_scores, include=TRUE, eval=TRUE}
-cell_scores.dt <- report_cell_metrics(BEARscc_clusts.df, noise_consensus)
-head(cell_scores.dt, n=4)
+cell_scores.df <- report_cell_metrics(BEARscc_clusts.df, noise_consensus)
+head(cell_scores.df, n=4)
 ```
 
-The output is a melted `data.table` that displays the name of each cluster 
+The output is a melted `data.frame` that displays the name of each cluster 
     to which the cell belongs, the cell label, the size of each cluster, 
-    the metric (score, Promiscuity, Stability), the value for each metric, 
+    the metric (Score, Promiscuity, Stability), the value for each metric, 
     and finally the clustering in question (1,2,...,Original).
 
 As with cluster metrics, these results can be plotted to visualize cells 
@@ -495,37 +492,40 @@ in the context of the original clusters using `ggplot2`. The score metric
 is plotted below to illustrate this:
 
 ```{r plot_cellscore_original, include=TRUE, eval=TRUE}
-ggplot(cell_scores.dt[Clustering=="Original"][Metric=="score"], 
-    aes(x=factor(`Cluster identity`), y=Value) )+
-    geom_jitter(aes(color=factor(`Cluster identity`)), stat="identity")+
-    xlab("Cluster identity")+ylab("Cell scores")+
-    ggtitle("Original clustering cell scores")+guides(color=FALSE)
+original_cell_scores.df<-cell_scores.df[cell_scores.df$Clustering=="Original",]
+ggplot(original_cell_scores.df[original_cell_scores.df$Metric=="Score",],
+       aes(x=factor(`Cluster.identity`), y=Value) )+
+  geom_jitter(aes(color=factor(`Cluster.identity`)), stat="identity")+
+  xlab("Cluster identity")+ylab("Cell scores")+
+  ggtitle("Original clustering cell scores")+guides(color=FALSE)
 ```
 
 ### Using BEARscc to inform cluster number, $k$, choice
 While BEARscc certainly does not claim to provide a definitive solution to the 
-question concerning the number of clusters, we provide what we believe to be
-a useful perspective on the matter. Specifically, we have found that by 
-examining the cluster metrics across various hiearchical clusterings of the
-BEARscc noise consensus, the cluster number $k$ with the highest score tends 
-to provide a number of clusters that resembles ground truth more closely than 
-simple gene sampling or relevant algorithms along as evidenced by experiments 
-in control samples, zebrafish, and murine brain data (see our manuscript on
-[bioRxiv](http://biorxiv.org/content/early/2017/03/21/118919). Importantly,
-this only provides a heuristic for determining cluster number $k$ that 
-takes into count the inherent noise of the single cell experiment, and the 
+question concerning the number of clusters by any means, we provide what we 
+believe to be a useful perspective on the matter. Specifically, we have found 
+that by examining the cluster metrics across various hiearchical clusterings 
+of the BEARscc noise consensus, the cluster number $k$ with the highest score 
+tends to provide a number of clusters that resembles ground truth more closely 
+than simple gene sampling or relevant algorithms along as evidenced by 
+experiments  in control samples, c. elegans , and murine brain data (see our 
+manuscript on [bioRxiv](http://biorxiv.org/content/early/2017/03/21/118919). 
+Importantly, this only provides a heuristic for determining cluster number $k$ 
+that takes into count the inherent noise of the single cell experiment, and the
 heuristic is dependent upon the clustering algorithm of choosing (the better
-the utilized clustering algorithm, the better the BEARscc $k$ heuristic). As
-an illustration of utilizing this heuristic, we plot the average cluster score 
-values for various cluster number scenarios below:
+the utilized clustering algorithm, the better the BEARscc $k$ heuristic) and
+represents a form of "meta-clustering" rather than a new way to determine the
+number of clusters, $k$, per se. As an illustration of utilizing this 
+heuristic, we plot the average cluster score values for various cluster number
+scenarios below:
 
 ```{r choosing_k, include=TRUE, eval=TRUE}
-ggplot(cluster_scores.dt[Metric=="score"], 
-    aes(x=`Clustering`, y=Value) )+
-    geom_boxplot(aes(fill=`Clustering`))+
-    xlab("Clustering")+ylab("Cluster score distribution")+
+ggplot(cluster_scores.df[cluster_scores.df$Metric=="Score",], 
+    aes(x=`Clustering`, y=Value) )+ geom_boxplot(aes(fill=Clustering,  
+    color=`Clustering`))+ xlab("Clustering")+
+    ylab("Cluster score distribution")+
     ggtitle("Original cluster scores for each clustering")+
-    guides(fill=FALSE)
+    guides(fill=FALSE, color=FALSE)
 ```
 
 As we can see, the 1 cluster scenario provides the best cluster score
@@ -808,7 +808,7 @@ estimated_noise <- estimate_noiseparameters(ERCC.counts.df,
                                     data.counts.df,
                                     ERCC.meta.df,
                                     granularity=30,
-                                    alpha_granularity=0.25,
+                                    alpha_resolution=0.25,
                                     write.noise.model=FALSE)
 estimated_noise
 ```
@@ -828,7 +828,7 @@ estimate_noiseparameters(ERCC.counts.df,
                                     ERCC.meta.df,
                                     granularity=30,
                                     write.noise.model=TRUE,
-                                    alpha_granularity=0.25,
+                                    alpha_resolution=0.25,
                                     file="noise_estimation",
                                     model_view=c("Observed","Optimized"))
 
@@ -960,7 +960,7 @@ cell_scores.dt
 ```
 
 ###Output
-A melted `data.table` describing the BEARscc metrics for each cell, 
+A melted `data.frame` describing the BEARscc metrics for each cell, 
     where the columns are enumerated in the help file.
 
 ##`report_cluster_metrics()`
@@ -987,7 +987,7 @@ cluster_scores.dt
 ```
 
 ###Output
-A melted `data.table` describing the BEARscc metrics for each cluster, 
+A melted `data.frame` describing the BEARscc metrics for each cluster, 
     where the columns are enumerated in the help file.
 
 \newpage

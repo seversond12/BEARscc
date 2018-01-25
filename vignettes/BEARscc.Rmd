@@ -1,7 +1,6 @@
 ---
 title: "BEARscc: Using spike-ins to assess single cell cluster robustness"
 author: "David T. Severson"
-date: "`r Sys.Date()`"
 output: BiocStyle::pdf_document
 vignette: >
     %\VignetteIndexEntry{Vignette Title}

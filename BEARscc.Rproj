@@ -9,8 +9,9 @@ UseSpacesForTab: Yes
 NumSpacesForTab: 2
 Encoding: UTF-8
 
-RnwWeave: Sweave
+RnwWeave: knitr
 LaTeX: pdfLaTeX
+RootDocument: vignettes/BEARscc.Rmd
 
 AutoAppendNewline: Yes
 StripTrailingWhitespace: Yes
@@ -18,4 +19,3 @@ StripTrailingWhitespace: Yes
 BuildType: Package
 PackageUseDevtools: Yes
 PackageInstallArgs: --no-multiarch --with-keep.source
-PackageRoxygenize: vignette

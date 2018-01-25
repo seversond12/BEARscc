@@ -46,8 +46,8 @@ dropout_recovery.genes){
         ".",onegene_counts[1]),]
     onegene_counts<-as.numeric(onegene_counts[-1])
     sampling<-sample(
-      dropout_recovery$transcripts, sum(onegene_counts==0),
-      prob=genewise_dropout_recovery_prob, replace=TRUE)
+        dropout_recovery$transcripts, sum(onegene_counts==0),
+        prob=genewise_dropout_recovery_prob, replace=TRUE)
     onegene_counts[onegene_counts==0]<-dropout_recovery[match(sample(
         dropout_recovery$transcripts, sum(onegene_counts==0),
         prob=genewise_dropout_recovery_prob, replace=TRUE),
@@ -58,7 +58,7 @@ dropout_recovery.genes){
 fill_out_count_probability_table<-function(count, dropout_injection){
     counts<-transcripts<-NULL
     dropout_injection[counts>=count,][,min:=min(transcripts),][
-      transcripts==min,][,counts:=count][,min:=NULL]
+        transcripts==min,][,counts:=count][,min:=NULL]
 }
 
 execute_sim_replicates<-function(sim_replicate, SCEList, max_cumprob){
@@ -72,10 +72,11 @@ execute_sim_replicates<-function(sim_replicate, SCEList, max_cumprob){
         noise_parameters$dropout_parameters)[2]-1)])
     rownames(dropout_recovery.genes)<-gsub("^X([0-9])","\\1",
         rownames(dropout_recovery.genes))
-    dropout_recovery<-data.table(noise_parameters$dropout_parameters[,1:3])[,
-        round_counts:=round(counts),]
-    dropout_injection<-data.table(noise_parameters$dropout_parameters[,1:3])[,
-        round_counts:=round(counts),][,`:=`(transcripts=transcripts,
+    dropout_recovery<-data.table(noise_parameters$dropout_parameters[,
+        seq_len(3)])[, round_counts:=round(counts),]
+    dropout_injection<-data.table(noise_parameters$dropout_parameters[,
+        seq_len(3)])[, round_counts:=round(counts),][,`:=`(
+        transcripts=transcripts,
         dropouts_given_transcripts=dropouts_given_transcripts,
         dif=abs(counts-round_counts), min=min(abs(counts-round_counts))),
         by=round_counts][dif==min,][,`:=`(transcripts=transcripts, dif=NULL,
@@ -85,8 +86,8 @@ execute_sim_replicates<-function(sim_replicate, SCEList, max_cumprob){
     all_counts<-seq(from=1,to=max(dropout_injection$counts), by=1)
     if (length(all_counts)>(length(dropout_injection$counts)-1)){
         dropout_injection<-data.frame(do.call(rbind, lapply(all_counts,
-           `fill_out_count_probability_table`, dropout_injection)),
-           row.names="counts")
+            `fill_out_count_probability_table`, dropout_injection)),
+            row.names="counts")
     } else{
         dropout_injection<-data.frame(dropout_injection, row.names = "counts")
     }
@@ -94,18 +95,20 @@ execute_sim_replicates<-function(sim_replicate, SCEList, max_cumprob){
     noisy_counts.zeros<-noisy_counts[,colSums(noisy_counts==0)>0]
     noisy_counts.nozeros<-noisy_counts[,colSums(noisy_counts==0)==0]
     indropout_range<-which(noisy_counts.zeros<=count_max & noisy_counts.zeros>0)
-    dropouts<-sapply(noisy_counts.zeros[indropout_range],
-        `permute_count_in_dropout_range`, dropout_injection)
+    dropouts<-vapply(noisy_counts.zeros[indropout_range],
+        `permute_count_in_dropout_range`, dropout_injection,
+        FUN.VALUE = numeric(1))
     t_counts<-rbind(colnames(noisy_counts.zeros), noisy_counts.zeros)
-    noisy_counts.zeros<-data.table(t_counts)[,sapply(.SD,`genewise_dropouts`,
+    noisy_counts.zeros<-data.table(t_counts)[,vapply(.SD,`genewise_dropouts`,
         dropout_recovery=dropout_recovery,
-        dropout_recovery.genes=dropout_recovery.genes)]
+        dropout_recovery.genes=dropout_recovery.genes,
+        FUN.VALUE = numeric(dim(.SD)[1]-1))]
     noisy_counts<-cbind(noisy_counts.zeros, noisy_counts.nozeros)[
         rownames(noisy_counts), colnames(noisy_counts)]
     noisy_counts.zeros[indropout_range]<-dropouts
-    noisy_counts[noisy_counts>0]<-sapply(noisy_counts[noisy_counts>0],
+    noisy_counts[noisy_counts>0]<-vapply(noisy_counts[noisy_counts>0],
         `randomizer`, parameters=noise_parameters$spikein_parameters,
-         max_cumprob=max_cumprob)
+        max_cumprob=max_cumprob, FUN.VALUE = numeric(1))
     t(noisy_counts)
 }
 

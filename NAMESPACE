@@ -4,6 +4,6 @@ import("compiler")
 import("SingleCellExperiment")
 importFrom("graphics", "hist")
 importFrom("stats", "as.dist", "coef", "cutree", "hclust", "lm", "na.omit",
-           "rnbinom", "rpois", "sd", "dnbinom", "dpois", "qnbinom", "qpois")
+    "rnbinom", "rpois", "sd", "dnbinom", "dpois", "qnbinom", "qpois")
 importFrom("utils", "write.table")
 exportPattern("^[[:alpha:]]+")

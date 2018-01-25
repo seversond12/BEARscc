@@ -41,8 +41,8 @@ plot_mu2sigma<-function(spikein_stats.dt, mu2sigma.fit, file, sd_inflate){
     geom_abline(slope=coef(mu2sigma.fit)[2],color="red",
         intercept=coef(mu2sigma.fit)[1]+
         sd_inflate*max(mu2sigma.fit$residuals))
-   ggsave(paste(file,"mu2sigma.pdf", sep="_"), plot=g, device="pdf",
-         width=8, height=6, units = "in")
+    ggsave(paste(file,"mu2sigma.pdf", sep="_"), plot=g, device="pdf",
+        width=8, height=6, units = "in")
 }
 
 #estimate mean to std dev correlation by linear regression
@@ -132,8 +132,8 @@ plot_alpha2mu<-function(final_alpha.dt, alpha2mean, file){
         ylab("Neg. binomial contribution parameter, alpha\n")+ggtitle("The Neg.
         binomial contribution is a function of gene expression.\n")+
         geom_abline(slope=coef(alpha2mean)[2], intercept = coef(alpha2mean)[1])
-  ggsave(paste(file,"alpha2mu_correlation.pdf",sep="_"),
-          plot=g, device="pdf", width=8, height=6, units = "in")
+    ggsave(paste(file,"alpha2mu_correlation.pdf",sep="_"),
+        plot=g, device="pdf", width=8, height=6, units = "in")
 }
 
 #compute alpha parameter empirically for mixed-model
@@ -432,16 +432,16 @@ counts2mpc.fit, plot, file, dropout_inflate=dropout_inflate, sample_number){
     }
     if (kmax>0){
         print(paste("There are adequate spike-in drop-outs to build the",
-             "drop-out model. Estimating the drop-out model now."), sep="")
+            "drop-out model. Estimating the drop-out model now."), sep="")
         noise_models<-compute_genewise_dropouts(build_dropoutmodel(kmax=kmax,
             undetected2mpc=undetected2mpc, counts2mpc.fit=counts2mpc.fit,
             dropout_inflate=dropout_inflate), kmax=kmax,
             endogenous_counts.df=endogenous_counts.df)
     } else {
         print(paste("Warning: there are inadequate spike-in drop-outs to",
-             "build the drop-out model. All observed zeros will be treated",
-             "as true zeros during simulation of technical replicates."),
-             sep="")
+            "build the drop-out model. All observed zeros will be treated",
+            "as true zeros during simulation of technical replicates."),
+            sep="")
         noise_models<-create_null_dropout_model(counts2mpc.fit=counts2mpc.fit,
             endogenous_counts.df=endogenous_counts.df)
     }

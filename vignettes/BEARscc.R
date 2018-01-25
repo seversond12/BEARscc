@@ -122,17 +122,17 @@ ggplot(original_scores.df[original_scores.df$Metric=="Score",],
 
 ## ----plot_clusterstability_original, include=TRUE, eval=TRUE---------------
 ggplot(original_scores.df[original_scores.df$Metric=="Stability",], 
-       aes(x=`Cluster.identity`, y=Value) )+
-  geom_bar(aes(fill=`Cluster.identity`), stat="identity")+
-  xlab("Cluster identity")+ylab("Cluster stability")+
-  ggtitle("Original cluster stability")+guides(fill=FALSE)
+    aes(x=`Cluster.identity`, y=Value) )+
+    geom_bar(aes(fill=`Cluster.identity`), stat="identity")+
+    xlab("Cluster identity")+ylab("Cluster stability")+
+    ggtitle("Original cluster stability")+guides(fill=FALSE)
 
 ## ----plot_clusterpromiscuity_original, include=TRUE, eval=TRUE-------------
 ggplot(original_scores.df[original_scores.df$Metric=="Promiscuity",], 
-       aes(x=`Cluster.identity`, y=Value) )+
-  geom_bar(aes(fill=`Cluster.identity`), stat="identity")+
-  xlab("Cluster identity")+ylab("Cluster promiscuity")+
-  ggtitle("Original cluster promiscuity")+guides(fill=FALSE)
+    aes(x=`Cluster.identity`, y=Value) )+
+    geom_bar(aes(fill=`Cluster.identity`), stat="identity")+
+    xlab("Cluster identity")+ylab("Cluster promiscuity")+
+    ggtitle("Original cluster promiscuity")+guides(fill=FALSE)
 
 ## ----compute_cell_scores, include=TRUE, eval=TRUE--------------------------
 cell_scores.df <- report_cell_metrics(BEARscc_clusts.df, noise_consensus)
@@ -141,10 +141,10 @@ head(cell_scores.df, n=4)
 ## ----plot_cellscore_original, include=TRUE, eval=TRUE----------------------
 original_cell_scores.df<-cell_scores.df[cell_scores.df$Clustering=="Original",]
 ggplot(original_cell_scores.df[original_cell_scores.df$Metric=="Score",],
-       aes(x=factor(`Cluster.identity`), y=Value) )+
-  geom_jitter(aes(color=factor(`Cluster.identity`)), stat="identity")+
-  xlab("Cluster identity")+ylab("Cell scores")+
-  ggtitle("Original clustering cell scores")+guides(color=FALSE)
+    aes(x=factor(`Cluster.identity`), y=Value) )+
+    geom_jitter(aes(color=factor(`Cluster.identity`)), stat="identity")+
+    xlab("Cluster identity")+ylab("Cell scores")+
+    ggtitle("Original clustering cell scores")+guides(color=FALSE)
 
 ## ----choosing_k, include=TRUE, eval=TRUE-----------------------------------
 ggplot(cluster_scores.df[cluster_scores.df$Metric=="Score",], 

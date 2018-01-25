@@ -27,9 +27,9 @@ simulate_replicates(SCEList, max_cumprob=0.9999, n = 3)
 \arguments{
 \item{SCEList}{
 A \code{SingleCellExpression} object that has been appropriately processed by
-     \code{estimate_noiseparameters()} to add the necessary parameters
-     describing the noise model for drop-outs and variance in the single
-     cell experiment.
+    \code{estimate_noiseparameters()} to add the necessary parameters
+    describing the noise model for drop-outs and variance in the single
+    cell experiment.
 }
 \item{max_cumprob}{
 Because a cumulative distribution will range from n=0 to a countable

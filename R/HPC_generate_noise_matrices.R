@@ -12,9 +12,9 @@ spikein_parameters, max_cumprob=0.9999){
         dropout_parameters)[2]-1)])
     rownames(dropout_recovery.genes)<-gsub("^X([0-9])","\\1",
         rownames(dropout_recovery.genes))
-    dropout_recovery<-data.table(dropout_parameters[,1:3, with=FALSE])[,
+    dropout_recovery<-data.table(dropout_parameters[,seq_len(3), with=FALSE])[,
         round_counts:=round(counts),]
-    dropout_injection<-data.table(dropout_parameters[,1:3, with=FALSE])[,
+    dropout_injection<-data.table(dropout_parameters[,seq_len(3), with=FALSE])[,
         round_counts:=round(counts),][,`:=`(transcripts=transcripts,
         dropouts_given_transcripts=dropouts_given_transcripts,
         dif=abs(counts-round_counts), min=min(abs(counts-round_counts))),
@@ -34,16 +34,19 @@ spikein_parameters, max_cumprob=0.9999){
     noisy_counts.zeros<-noisy_counts[,colSums(noisy_counts==0)>0]
     noisy_counts.nozeros<-noisy_counts[,colSums(noisy_counts==0)==0]
     indropout_range<-which(noisy_counts<=count_max & noisy_counts>0)
-    dropouts<-sapply(noisy_counts[indropout_range],
-        `permute_count_in_dropout_range`, dropout_injection)
+    dropouts<-vapply(noisy_counts[indropout_range],
+        `permute_count_in_dropout_range`, dropout_injection,
+        FUN.VALUE = numeric(1))
     t_counts<-rbind(colnames(noisy_counts.zeros), noisy_counts.zeros)
-    noisy_counts.zeros<-data.table(t_counts)[,sapply(.SD,
+    noisy_counts.zeros<-data.table(t_counts)[,vapply(.SD,
         `genewise_dropouts`, dropout_recovery=dropout_recovery,
-        dropout_recovery.genes=dropout_recovery.genes)]
+        dropout_recovery.genes=dropout_recovery.genes,
+        FUN.VALUE = numeric(dim(.SD)[1]-1))]
     noisy_counts<-cbind(noisy_counts.zeros, noisy_counts.nozeros)[
         rownames(noisy_counts), colnames(noisy_counts)]
     noisy_counts[indropout_range]<-dropouts
-    noisy_counts[noisy_counts>0]<-sapply(noisy_counts[noisy_counts>0],
-        `randomizer`, parameters=spikein_parameters, max_cumprob=max_cumprob)
+    noisy_counts[noisy_counts>0]<-vapply(noisy_counts[noisy_counts>0],
+        `randomizer`, parameters=spikein_parameters, max_cumprob=max_cumprob,
+        FUN.VALUE = numeric(1))
     t(noisy_counts)
 }

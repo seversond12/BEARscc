@@ -9,8 +9,9 @@
 #creates a consensus matrix from a single list of cluster labels
 create_cm<-function(cluster_labels, names){
     names(cluster_labels)<-names
-    sapply(cluster_labels, function(x){sapply(cluster_labels,
-        function(y){as.numeric(x==y)})})
+    vapply(cluster_labels, function(x){vapply(cluster_labels,
+        function(y){as.numeric(x==y)},  FUN.VALUE=numeric(1))},
+        FUN.VALUE = numeric(length(cluster_labels)))
 }
 
 calculate_cluster_metrics_by_cluster<-function(clusters, cluster_labels,
@@ -35,7 +36,7 @@ consensus_matrix){
             keep.rownames = TRUE)
         colnames(prom.mean.dt)[2]<-"mean.prom"
         prom.mean.dt<-prom.mean.dt[order(-mean.prom)]
-        prom.mean.dt<-prom.mean.dt[1:length(in.cluster),]
+        prom.mean.dt<-prom.mean.dt[seq_len(length(in.cluster)),]
         outside.promiscuity<-mean(promiscuity.matrix[,
             as.character(prom.mean.dt$rn), drop=FALSE])
     }
@@ -83,8 +84,8 @@ consensus_matrix){
             consensus_matrix[in.cluster,out.cluster, drop=FALSE]),
             keep.rownames = TRUE)
             promiscuity.dt<-promiscuity.dt[,.(Promiscuity = apply(.SD, 1,
-            function(x, y=length(in.cluster)) {mean(sort(x,
-            decreasing = TRUE)[1:y])})), keyby=rn]
+                function(x, y=length(in.cluster)) {mean(sort(x,
+                decreasing = TRUE)[seq_len(y)])})), keyby=rn]
             cell_metric.dt<-stability.dt[promiscuity.dt]
             colnames(cell_metric.dt)[1]<-"cell"
             cell_metric.dt$Score<-cell_metric.dt$Stability-
@@ -107,7 +108,8 @@ consensus_matrix){
             stability.dt<-data.table(data.frame(consensus_matrix[in.cluster,
                 in.cluster,drop=FALSE]), keep.rownames = TRUE)
             stability.dt<-stability.dt[,
-                .(Stability = (rowSums(.SD)-1)/(length(in.cluster)-1)), keyby=rn]
+                .(Stability = (rowSums(.SD)-1)/(length(in.cluster)-1)),
+                keyby=rn]
             promiscuity.dt<-data.table(data.frame(consensus_matrix[in.cluster,
                 out.cluster, drop=FALSE]), keep.rownames = TRUE)
             promiscuity.dt<-promiscuity.dt[,.(Promiscuity = rowMeans(.SD)),

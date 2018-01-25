@@ -198,7 +198,7 @@ desired number of simulated technical replicates (e.g. 10). Finally, the
 `maxcum_prob` is identical to its use in the noise estimation. If the user
 deviated from the default parameter, it is highly recommended that this value
 be identical to the value utilized in `estimate_noiseparmaters()` The resulting
- object is a list, where each element is a simulated technical replicate, 
+object is a list, where each element is a simulated technical replicate, 
 and one element is the original counts matrix. 
 
 
@@ -447,10 +447,10 @@ promiscuity metrics bear this out:
 
 ```{r plot_clusterstability_original, include=TRUE, eval=TRUE}
 ggplot(original_scores.df[original_scores.df$Metric=="Stability",], 
-       aes(x=`Cluster.identity`, y=Value) )+
-  geom_bar(aes(fill=`Cluster.identity`), stat="identity")+
-  xlab("Cluster identity")+ylab("Cluster stability")+
-  ggtitle("Original cluster stability")+guides(fill=FALSE)
+    aes(x=`Cluster.identity`, y=Value) )+
+    geom_bar(aes(fill=`Cluster.identity`), stat="identity")+
+    xlab("Cluster identity")+ylab("Cluster stability")+
+    ggtitle("Original cluster stability")+guides(fill=FALSE)
 ```
 
 The high stability exhibited in the example above is not suprising as samples
@@ -459,10 +459,10 @@ promuscuity below reveals the reason for the low score:
 
 ```{r plot_clusterpromiscuity_original, include=TRUE, eval=TRUE}
 ggplot(original_scores.df[original_scores.df$Metric=="Promiscuity",], 
-       aes(x=`Cluster.identity`, y=Value) )+
-  geom_bar(aes(fill=`Cluster.identity`), stat="identity")+
-  xlab("Cluster identity")+ylab("Cluster promiscuity")+
-  ggtitle("Original cluster promiscuity")+guides(fill=FALSE)
+    aes(x=`Cluster.identity`, y=Value) )+
+    geom_bar(aes(fill=`Cluster.identity`), stat="identity")+
+    xlab("Cluster identity")+ylab("Cluster promiscuity")+
+    ggtitle("Original cluster promiscuity")+guides(fill=FALSE)
 ```
 
 Despite the high stability, the samples within each cluster have high 
@@ -494,10 +494,10 @@ is plotted below to illustrate this:
 ```{r plot_cellscore_original, include=TRUE, eval=TRUE}
 original_cell_scores.df<-cell_scores.df[cell_scores.df$Clustering=="Original",]
 ggplot(original_cell_scores.df[original_cell_scores.df$Metric=="Score",],
-       aes(x=factor(`Cluster.identity`), y=Value) )+
-  geom_jitter(aes(color=factor(`Cluster.identity`)), stat="identity")+
-  xlab("Cluster identity")+ylab("Cell scores")+
-  ggtitle("Original clustering cell scores")+guides(color=FALSE)
+    aes(x=factor(`Cluster.identity`), y=Value) )+
+    geom_jitter(aes(color=factor(`Cluster.identity`)), stat="identity")+
+    xlab("Cluster identity")+ylab("Cell scores")+
+    ggtitle("Original clustering cell scores")+guides(color=FALSE)
 ```
 
 ### Using BEARscc to inform cluster number, $k$, choice
@@ -804,13 +804,10 @@ For greater detail, please see help file `?estimate_noiseparameters()`.
 ###Usage
 ```R
 data(BEARscc_examples)
-estimated_noise <- estimate_noiseparameters(ERCC.counts.df,
-                                    data.counts.df,
-                                    ERCC.meta.df,
-                                    granularity=30,
-                                    alpha_resolution=0.25,
-                                    write.noise.model=FALSE)
-estimated_noise
+BEAR_examples.sce <- estimate_noiseparameters(BEAR_examples.sce,
+alpha_resolution=0.25, write.noise.model=FALSE)
+
+BEAR_examples.sce
 ```
 
 ###Output
@@ -818,36 +815,31 @@ The resulting output of `estimate_noiseparameters()` is a long list,
     which is enumerated in the function's package help page.
 
 ###Note
-The above usage is for execution of `create_noiseinjected_counts` 
+The above usage is for execution of `simulate_replicates` 
     on a local machine. To save results as files for us of
     `prepare_probabilities` on high performance computing
     environment, then use:
 ```R 
-estimate_noiseparameters(ERCC.counts.df,
-                                    data.counts.df,
-                                    ERCC.meta.df,
-                                    granularity=30,
-                                    write.noise.model=TRUE,
-                                    alpha_resolution=0.25,
-                                    file="noise_estimation",
-                                    model_view=c("Observed","Optimized"))
-
+estimate_noiseparameters(BEAR_examples.sce,
+    write.noise.model=TRUE, alpha_resolution=0.25,
+    file="noise_estimation", model_view=c("Observed","Optimized"))
 ```
 
 
-##`create_noiseinjected_counts()`
+##`simulate_replicates()`
 ###Description
 Computes BEARscc simulated technical replicates from the 
     previously estimated noise parameters computed with the 
     function `estimate_noise_parameters()`.
     
-For greater detail, please see help file `?create_noiseinjected_counts()`.
+For greater detail, please see help file `?simulate_replicates()`.
 
 ###Usage
 ```R
 data(analysis_examples)
-sim_replicates<-create_noiseinjected_counts(estimated_noise, n=3)
-sim_replicates
+BEAR_examples.sce<-simulate_replicates(BEAR_examples.sce, n=3)
+
+BEAR_examples.sce
 ```
 ###Output
 The resulting object is a list of counts data, where each element of the list 
@@ -858,10 +850,10 @@ The resulting object is a list of counts data, where each element of the list
 This function is the in-package analog of the high-performance 
     computing function,`prepare_probabilities`.
 
-##`prepare_probabilities()`
+##`HPC_simulate_replicates()`
 ###Description
 The high-performance computing function analog to 
-    `create_noiseinjected_counts()`.
+    `simulate_replicates()`.
     
 ###Usage
 Please refere to section 2.4. 

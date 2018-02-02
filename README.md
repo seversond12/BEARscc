@@ -14,14 +14,14 @@ Single-cell transcriptome sequencing data are subject to substantial technical v
 
 **BEARscc** makes use of ERCC spike-in measurements to model technical variance as a function of gene expression and technical dropout effects on lowly expressed genes. In our benchmarks, we found that BEARscc accurately models read count fluctuations and drop-out effects across transcripts with diverse expression levels. Applying our approach to publicly available single-cell transcriptome data of mouse brain and intestine, we have demonstrated that BEARscc identified cells that cluster consistently, irrespective of technical variation. For more details, see the [manuscript that is now available on bioRxiv](http://biorxiv.org/content/early/2017/03/21/118919).
 
-![BEARscc consensus cluster](example/figure3.png)
+![BEARscc consensus cluster](inst/example/figure3.png)
 
 #Installation
 
-Installing BEARscc is easy. You can download a source package [here](https://bitbucket.org/bsblabludwig/bearscc/src/cb3292b74cfa67d70ef01d5c83a59323b945efec/builds/BEARscc_0.1.1.tar.gz). You can then use `install.packages`, but give it the location of the downloaded file:
+Installing BEARscc is easy. You can download a source package [here](https://bitbucket.org/bsblabludwig/bearscc/src/cb3292b74cfa67d70ef01d5c83a59323b945efec/builds/BEARscc_0.99.8.tar.gz). You can then use `install.packages`, but give it the location of the downloaded file:
 
 ```R
-install.packages('builds/BEARscc_0.99.3.tar.gz', repos = NULL, type="source")
+install.packages('builds/BEARscc_0.99.8.tar.gz', repos = NULL, type="source")
 ```
 
 #Usage
@@ -94,7 +94,7 @@ clusters.df<-do.call("cbind", cluster.list)
 colnames(clusters.df)<-names(cluster.list)
 ```
 
-If running clustering algorithms on a seperate high power cluster, the user should retrieve labels and format as a `data.frame` of cluster labels, where the last column must be the original cluster labels derived from the observed count data. As an example, examine the file, [example/example_clusters.tsv](example/example_clusters.tsv).
+If running clustering algorithms on a seperate high power cluster, the user should retrieve labels and format as a `data.frame` of cluster labels, where the last column must be the original cluster labels derived from the observed count data. As an example, examine the file, [inst/example/example_clusters.tsv](inst/example/example_clusters.tsv).
 
 Using the cluster labels file as described above, we can generate a noise consensus matrix using: 
 
@@ -104,7 +104,7 @@ noise_consensus <- compute_consensus(clusters.df)
 
 Using the `aheatmap()` function in the `NMF` library, the consensus matrix result of 30 iterations of BEARscc on the provided example data will look this:
 
-![BEARscc consensus cluster](example/example_30iterations_consensus_matrix_heatmap.png)
+![BEARscc consensus cluster](inst/example/example_30iterations_consensus_matrix_heatmap.png)
 
 To reproduce the plot run:
 ```R
@@ -135,7 +135,7 @@ cluster_scores.dt <- report_cluster_metrics(BEARscc_clusts.df, noise_consensus, 
 
 The output is a melted `data.frame` that displays the name of each cluster, the size of each cluster, the metric (Score, Promiscuity, Stability), the value of each metric for the respective cluster and clustering, the clustering in question (1,2,...,Original), whether the cluster consists of only one cell, and finally the mean of each metric across all clusters in a clustering.  
 
-An example of the resulting plot for 3 noise-injected perturbations is provided for the user's reference: [example/example_cluster_scores.pdf](example/example_cluster_scores.pdf). It is evident from the plot that one cluster is optimal and outperforms the original clustering which bifurcated this set of purely technical data into 2 clusters.
+An example of the resulting plot for 3 noise-injected perturbations is provided for the user's reference: [inst/example/example_cluster_scores.pdf](inst/example/example_cluster_scores.pdf). It is evident from the plot that one cluster is optimal and outperforms the original clustering which bifurcated this set of purely technical data into 2 clusters.
 
 Likewise, the cell metrics may be computed using:
 

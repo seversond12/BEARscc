@@ -61,14 +61,14 @@ may be less precisely assigned to the putative biological role.
 
 
 ##Installation
-It is our hope that BEARscc will shortly be available on Bioconductor. 
-For now, installing BEARscc is easy. You can download a source package
-[here](http://goo.gl/cxANiN). You can then use `install.packages`, 
-but give it the location of the downloaded file:
+BEARscc is now available on Bioconductor and can be installed using the 
+syntax below. 
+
 
 
 ```{r install_BEARscc, include=TRUE, eval=FALSE}
-install.packages('../inst/BEARscc_0.99.3.tar.gz', repos = NULL, type="source")
+source("http://bioconductor.org/biocLite.R")
+biocLite("BEARscc")
 ```
 
 

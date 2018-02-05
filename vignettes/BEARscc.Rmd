@@ -22,9 +22,9 @@ library("data.table")
 library("SingleCellExperiment")
 ```
 
-#Introduction
+# Introduction
 
-##Scope
+## Scope
 Single-cell transcriptome sequencing data are subject to substantial 
 technical variation and batch effects that can confound the classification 
 of cellular sub-types. Unfortunately, current clustering algorithms do not 
@@ -60,7 +60,7 @@ which they have an intimate understanding of those cells and clusters that
 may be less precisely assigned to the putative biological role. 
 
 
-##Installation
+## Installation
 BEARscc is now available on Bioconductor and can be installed using the 
 syntax below. 
 
@@ -72,7 +72,7 @@ biocLite("BEARscc")
 ```
 
 
-##Citation
+## Citation
 BEARscc and its associated manuscript are currently under review for 
 publication at a peer-reviewed journal. For now, please cite the 
 bioRxiv pre-print:
@@ -85,7 +85,7 @@ bioRxiv pre-print:
 
 #Tutorial
 
-##Overview
+## Overview
 
 BEARscc relies upon spike-in count measurements in single-cell transcriptome 
 experiments to estimate experimental noise and produce simulated technical
@@ -155,7 +155,7 @@ Running the above code should yield a `SingleCellExperiment` object identical
 to the one that loads with `data("BEARscc_examples")`.
 
 
-##Building the noise model
+## Building the noise model
 We will now estimate the single-cell noise present in the experiment using
 spike-in controls. In this tutorial, we rely upon a subsample of artificial
 control data found in `BEARscc_examples`; however, users are encouraged to 
@@ -583,7 +583,7 @@ functions `report_cell_metrics()` and `report_cluster_metrics()` may be used
 to explore and quantitate the noise consensus matrix at the cell sample 
 and cluster levels, respectively. 
 
-##Noise estimation
+## Noise estimation
 As mentioned previously, BEARscc uses spike-ins to estimate the noise of the 
 experiment for the purpose of producing simulated technical replicates. 
 BEARscc models overall technical variation with a mixture-model 
@@ -591,7 +591,7 @@ BEARscc models overall technical variation with a mixture-model
 using the spike-in observations. However, a single function in 
 BEARscc `estimate_noiseparameters()` accomplishes this task.  
 
-###Estimating transcript variation
+### Estimating transcript variation
 Technical variance is modeled in BEARsccby fitting a single parameter 
 mixture model, $Z(c)$, to the spike-ins' observed count distributions. 
 The noise model is fit independently for each spike-in transcript and 
@@ -656,7 +656,7 @@ observed count value, $a$, and the transformed count in the simulated
 replicate was determined by sampling a single value from $Z(c=a)$. 
 
 
-###Defining the drop-out models
+### Defining the drop-out models
 A model of the drop-outs is developed by BEARscc in order to inform the 
 permutation of zeros during noise injection. The observed zeros in spike-in 
 transcripts as a function of actual transcript concentration and Bayes' 
@@ -754,7 +754,7 @@ described in the pseudocode of the BEARscc algorithm for
 simulating technical replicates.
 
 
-##Simulating technical replicates
+## Simulating technical replicates
 Simulated technical replicates were generated from the noise mixture-model and 
 two drop-out models. For each gene, the count value of each sample is 
 systematically transformed using the mixture-model, $Z(c)$, and the 
@@ -793,14 +793,14 @@ DONE
 \newpage
 # List of functions
 
-##`estimate_noiseparameters()`
-###Description
+## `estimate_noiseparameters()`
+### Description
 Estimates the drop-out model and technical variance 
     from spike-ins present in the sample.
 
 For greater detail, please see help file `?estimate_noiseparameters()`.
 
-###Usage
+### Usage
 ```R
 data(BEARscc_examples)
 BEAR_examples.sce <- estimate_noiseparameters(BEAR_examples.sce,
@@ -809,11 +809,11 @@ alpha_resolution=0.25, write.noise.model=FALSE)
 BEAR_examples.sce
 ```
 
-###Output
+### Output
 The resulting output of `estimate_noiseparameters()` is a long list,
     which is enumerated in the function's package help page.
 
-###Note
+### Note
 The above usage is for execution of `simulate_replicates` 
     on a local machine. To save results as files for us of
     `prepare_probabilities` on high performance computing
@@ -825,50 +825,50 @@ estimate_noiseparameters(BEAR_examples.sce,
 ```
 
 
-##`simulate_replicates()`
-###Description
+## `simulate_replicates()`
+### Description
 Computes BEARscc simulated technical replicates from the 
     previously estimated noise parameters computed with the 
     function `estimate_noise_parameters()`.
     
 For greater detail, please see help file `?simulate_replicates()`.
 
-###Usage
+### Usage
 ```R
 data(analysis_examples)
 BEAR_examples.sce<-simulate_replicates(BEAR_examples.sce, n=3)
 
 BEAR_examples.sce
 ```
-###Output
+### Output
 The resulting object is a list of counts data, where each element of the list 
     is a `data.frame` of the counts representing a BEARscc simulated technical 
     replicate. For further details refer to the function help page.
     
-###Note
+### Note
 This function is the in-package analog of the high-performance 
     computing function,`prepare_probabilities`.
 
-##`HPC_simulate_replicates()`
-###Description
+## `HPC_simulate_replicates()`
+### Description
 The high-performance computing function analog to 
     `simulate_replicates()`.
     
-###Usage
+### Usage
 Please refere to section 2.4. 
 
-###Output
+### Output
 The resulting objects would normally be output to a tab-delimited file, where
     each file results from a `data.frame` of the counts representing a BEARscc
     simulated technical replicate. 
 
-###Note
+### Note
 This function has no help file, but is referred to in the section 2.4
     of this document on simulating for larger datasets.
 
 
-##`compute_consensus()`
-###Description
+## `compute_consensus()`
+### Description
 Computes the consensus matrix using a `data.frame` of cluster labels across 
     different BEARscc simulated technical replicates.The consensus matrix is
     is a visual and quantitaive representation of the clustering variation on 
@@ -883,21 +883,21 @@ Computes the consensus matrix using a `data.frame` of cluster labels across
     
 For greater detail, please see help file `?compute_consensus()`.
 
-###Usage
+### Usage
 ```R
 data("analysis_examples")
 noise_consensus <- compute_consensus(clusters.df)
 noise_consensus
 ```
 
-###Output
+### Output
 When the number of samples are \emph{n}, then the noise consensus 
     resulting from this function is an \emph{n} x \emph{n} matrix 
     describing the fraction of simulated technical replicates in 
     which each cell of the experiment associates with another cell.
 
-##`cluster_consensus()`
-###Description
+## `cluster_consensus()`
+### Description
 This function will perform hierarchical clustering on the noise 
     consensus matrix allowing the user to investigate the appropriate 
     number of clusters, \emph{k}, considering the noise within the 
@@ -909,7 +909,7 @@ This function will perform hierarchical clustering on the noise
     
 For greater detail, please see help file `?cluster_consensus()`.
 
-###Usage
+### Usage
 ```R
 data(analysis_examples)
 vector <- seq(from=2, to=5, by=1)
@@ -918,15 +918,15 @@ BEARscc_clusts.df <- cluster_consensus(consensus_matrix=noise_consensus,
 BEARscc_clusts.df
 ```
 
-###Output
+### Output
 The output is a vector of cluster labels based on hierarchical clustering
     of the noise consensus. In the event that a vector is supplied for
     number of clusters in conjunction with `lapply`, then the output
     is a data.frame of the cluster labels for each of the various number
     of clusters deemed biologically reasonable by the user.
     
-##`report_cell_metrics()`
-###Description
+## `report_cell_metrics()`
+### Description
 To quantitatively evaluate the results, three metrics are calculated 
     from the noise consensus matrix: 'stability' is the average 
     frequency with which a cell within a cluster associates with other 
@@ -943,19 +943,19 @@ To quantitatively evaluate the results, three metrics are calculated
     
 For greater detail, please see help file `?report_cell_metrics()`. 
 
-###Usage
+### Usage
 ```R
 data(analysis_examples)
 cell_scores.dt <- report_cell_metrics(BEARscc_clusts.df, noise_consensus)
 cell_scores.dt
 ```
 
-###Output
+### Output
 A melted `data.frame` describing the BEARscc metrics for each cell, 
     where the columns are enumerated in the help file.
 
-##`report_cluster_metrics()`
-###Description
+## `report_cluster_metrics()`
+### Description
 To quantitatively evaluate the results, three metrics are calculated 
     from the noise consensus matrix: 'stability' is the average 
     frequency with which cells within a cluster associate with each 
@@ -969,7 +969,7 @@ To quantitatively evaluate the results, three metrics are calculated
     
 For greater detail, please see help file `?report_cluster_metrics()`. 
 
-###Usage
+### Usage
 ```R
 data(analysis_examples)
 cluster_scores.dt <- report_cluster_metrics(BEARscc_clusts.df,noise_consensus,
@@ -977,7 +977,7 @@ cluster_scores.dt <- report_cluster_metrics(BEARscc_clusts.df,noise_consensus,
 cluster_scores.dt
 ```
 
-###Output
+### Output
 A melted `data.frame` describing the BEARscc metrics for each cluster, 
     where the columns are enumerated in the help file.
 
@@ -989,8 +989,8 @@ Within the package there are data subsampled from single cell sequencing
     in in a manuscript on 
     [bioRxiv](http://biorxiv.org/content/early/2017/03/21/118919)
 
-##`BEARscc_examples`
-###Description
+## `BEARscc_examples`
+### Description
 A toy dataset for applying BEARscc functions as described in the README on 
     https://bitbucket.org/bsblabludwig/bearscc.git.These data are a subset of 
     observations made by Drs. Michael White and Richard Owen 
@@ -1000,13 +1000,13 @@ A toy dataset for applying BEARscc functions as described in the README on
 
 For greater detail, please see help file `?BEARscc_examples`.
     
-###Usage
+### Usage
 ```R
 data("BEARscc_examples")
 ```
 
-##`analysis_examples`
-###Description
+## `analysis_examples`
+### Description
 BEARscc downstream example objects: The `analysis_examples` Rdata object 
     contains downstream data objects for use in various help pages for 
     dynamic execution resulting from running tutorial in README and 
@@ -1016,7 +1016,7 @@ BEARscc downstream example objects: The `analysis_examples` Rdata object
 
 For greater detail, please see help file `?analysis_examples`.
 
-###Usage
+### Usage
 ```R
 data("analysis_examples")
 ```

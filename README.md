@@ -8,7 +8,7 @@ BEARscc - Bayesian ERCC Assessment of Robustness
 - [More details](#markdown-header-details)
 - [License](#markdown-header-license)
 
-#Summary
+# Summary
 
 Single-cell transcriptome sequencing data are subject to substantial technical variation and batch effects that can confound the classification of cellular sub-types. Unfortunately, current clustering algorithms don't account for this uncertainty. To address this shortcoming, we have developed a noise perturbation algorithm called **BEARscc** that is designed to determine the extent to which classifications by existing clustering algorithms are robust to observed technical variation.
 
@@ -16,7 +16,7 @@ Single-cell transcriptome sequencing data are subject to substantial technical v
 
 ![BEARscc consensus cluster](inst/example/figure3.png)
 
-#Installation
+# Installation
 
 Installing BEARscc is easy. You can download a source package [here](https://bitbucket.org/bsblabludwig/bearscc/src/cb3292b74cfa67d70ef01d5c83a59323b945efec/builds/BEARscc_0.99.8.tar.gz). You can then use `install.packages`, but give it the location of the downloaded file:
 
@@ -24,7 +24,7 @@ Installing BEARscc is easy. You can download a source package [here](https://bit
 install.packages('builds/BEARscc_0.99.8.tar.gz', repos = NULL, type="source")
 ```
 
-#Usage
+# Usage
 
 Here we provide a limited illustrative example of BEARscc on example data. Load the previously package example containing `data.frame` objects with spike-in counts, spike-in concentrations, and endogenous counts. A 
 comprehensive vignette describes how these objects are combined to form a `SingleCellExperiment`object. For
@@ -43,7 +43,7 @@ BEAR_examples.sce <- estimate_noiseparameters(BEAR_examples.sce, file="noise_est
     model_view=c("Observed","Optimized"))
 ```
 
-#Options
+# Options
 
 Several options exist:
 

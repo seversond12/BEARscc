@@ -2,8 +2,8 @@ Package: BEARscc
 Type: Package
 Title: BEARscc (Bayesian ERCC Assesstment of Robustness of 
     Single Cell Clusters)
-Version: 0.99.9
-Author: David T. Severson <david.severson@ludwig.ox.ac.uk>
+Version: 0.99.10
+Author: David T. Severson <david_severson@hms.harvard.edu>
 Maintainer: Benjamin Schuster-Boeckler 
     <benjamin.schuster-boeckler@ludwig.ox.ac.uk>
 Description: BEARscc is a noise estimation and injection tool that is 

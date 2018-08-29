@@ -67,8 +67,9 @@ syntax below.
 
 
 ```{r install_BEARscc, include=TRUE, eval=FALSE}
-source("http://bioconductor.org/biocLite.R")
-biocLite("BEARscc")
+if (!requireNamespace("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+BiocManager::install("BEARscc")
 ```
 
 

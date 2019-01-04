@@ -2,7 +2,7 @@ Package: BEARscc
 Type: Package
 Title: BEARscc (Bayesian ERCC Assesstment of Robustness of 
     Single Cell Clusters)
-Version: 1.3.0
+Version: 1.3.1
 Author: David T. Severson <david_severson@hms.harvard.edu>
 Maintainer: Benjamin Schuster-Boeckler 
     <benjamin.schuster-boeckler@ludwig.ox.ac.uk>
@@ -15,4 +15,4 @@ Imports: ggplot2, SingleCellExperiment, data.table, stats, utils,
 Suggests: testthat, cowplot, knitr, rmarkdown, BiocStyle, NMF
 VignetteBuilder: knitr
 RoxygenNote: 6.0.1
-biocViews: SingleCell, Clustering, Transcriptomics
+biocViews: ImmunoOncology, SingleCell, Clustering, Transcriptomics

@@ -471,8 +471,7 @@ dropout_inflate=1, model_view=c("Observed", "Optimized"),
 alpha_resolution=0.005, tie_function="maximum"){
     transcripts<-value<-V1<-rn<-distribution<-metadata<-NULL
     `metadata<-`<-assay<-NULL
-    spike_counts.df<-data.frame(assay(SCEList, "observed_expression")[isSpike(
-        SCEList, "ERCC_spikes"),])
+    spike_counts.df<-data.frame(assay(altExp(SCEList, "ERCC_spikes")))
     spike_conc.df<-metadata(SCEList)$spikeConcentrations
     endogenous_counts.df<-data.frame(assay(SCEList, "observed_expression"))
     melted_spikeins.dt<-melt_spikeins(prepare_data(spike_counts.df,

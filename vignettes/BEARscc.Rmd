@@ -148,8 +148,8 @@ BEAR.se <- SummarizedExperiment(list(counts=as.matrix(data.counts.df)))
 BEAR_examples.sce<-as(BEAR.se, "SingleCellExperiment")
 metadata(BEAR_examples.sce)<-list(spikeConcentrations=ERCC.meta.df)
 assay(BEAR_examples.sce, "observed_expression")<-counts(BEAR_examples.sce)
-isSpike(BEAR_examples.sce, "ERCC_spikes")<-grepl("^ERCC-", 
-    rownames(BEAR_examples.sce))
+altExp(BEAR_examples.sce, "ERCC_spikes")<-BEAR_examples.sce[grepl("^ERCC-", 
+    rownames(BEAR_examples.sce)),]
 ```
 
 Running the above code should yield a `SingleCellExperiment` object identical
